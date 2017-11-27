@@ -2,7 +2,7 @@
 
 Tactical Asset Allocation using Deep Learning
 
-a python project for practicing using Deep Learning using keras and tensorflow.
+a python project for practicing Deep Learning techniques using keras and tensorflow.
 
 Dependencies:
 
