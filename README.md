@@ -14,13 +14,9 @@ create an hdf file that holds stock quotes (as in repository pyTAAA)
 
 "python re-generateHDF5.py"
 
-edit the file containing information for PyTAA to report results
-
-options exist to send an email to your desired email from another email account (they don't have to be the same email account)
-edit PyTAAA.params with a text editor and replace example values with your information
 run PyTAAADL with the command: "python SP500_DL_3layer_DropRandomStocks_monthly_sensitivityTest.py"
 
-PyTAAADL recommends new stock holdings based on training using previous stock histories (DL data) combined with known stock gains/losses one month later (DL labels). PyTAAADL uses this trained network to when run at the beginning of a month to suggest stocks to purchase and hold for one month. Repeat each month. It is currently untested but has been trained and backtested to suggest that chosen stocks will perform better than a market index such as the Nasdaq 100 index.
+PyTAAADL recommends new stock holdings based on training using previous stock histories (DL data) combined with known stock gains/losses one month later (DL labels). PyTAAADL uses this trained network when run at the beginning of a month to suggest stocks to purchase and hold for one month. Repeat each month. It is currently untested but has been trained and backtested to suggest that chosen stocks will perform better than a market index such as the Nasdaq 100 index.
 
 It's up to the user to decide if they want to do anything with the recommendations. This is designed and provided for entertainment only. The author does not accept and responsibility for anything done by others with the recommendations.
 
