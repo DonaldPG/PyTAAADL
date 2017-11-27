@@ -1,0 +1,105 @@
+ATVI;Activision Blizzard
+ADBE;Adobe Systems Incorporated
+AKAM;Akamai Technologies
+ALXN;Alexion Pharmaceuticals
+GOOG;Alphabet Inc.
+GOOGL;Alphabet Inc.
+AMZN;Amazon.com
+AAL;American Airlines Group
+AMGN;Amgen Inc.
+ADI;Analog Devices
+AAPL;Apple Inc.
+AMAT;Applied Materials
+ADSK;Autodesk
+ADP;Automatic Data Processing
+BIDU;Baidu
+BBBY;Bed Bath &amp; Beyond Inc.
+BIIB;Biogen Inc.
+BMRN;BioMarin Pharmaceutical Inc.
+AVGO;Broadcom Limited
+CA;CA Inc.
+CELG;Celgene Corporation
+CERN;Cerner Corporation
+CHTR;Charter Communications
+CHKP;Check Point Software Technologies Ltd.
+CSCO;Cisco Systems
+CTXS;Citrix Systems
+CTSH;Cognizant Technology Solutions Corporation
+CMCSA;Comcast Corporation
+COST;Costco Wholesale Corporation
+CSX;CSX Corporation
+CTRP;Ctrip.com International
+XRAY;DENTSPLY SIRONA Inc.
+DISCA;Discovery Communications
+DISCK;Discovery Communications
+DISH;DISH Network Corporation
+DLTR;Dollar Tree
+EBAY;eBay Inc.
+EA;Electronic Arts Inc.
+EXPE;Expedia
+ESRX;Express Scripts Holding Company
+FB;Facebook
+FAST;Fastenal Company
+FISV;Fiserv
+GILD;Gilead Sciences
+HSIC;Henry Schein
+ILMN;Illumina
+INCY;Incyte Corporation
+INTC;Intel Corporation
+INTU;Intuit Inc.
+ISRG;Intuitive Surgical
+JD;JD.com
+LRCX;Lam Research Corporation
+LBTYA;Liberty Global plc
+LBTYK;Liberty Global plc
+LVNTA;Liberty Interactive Corporation
+QVCA;Liberty Interactive Corporation
+LLTC;Linear Technology Corporation
+MAR;Marriott International
+MAT;Mattel
+MXIM;Maxim Integrated Products
+MCHP;Microchip Technology Incorporated
+MU;Micron Technology
+MSFT;Microsoft Corporation
+MDLZ;Mondelez International
+MNST;Monster Beverage Corporation
+MYL;Mylan N.V.
+NTAP;NetApp
+NTES;NetEase
+NFLX;Netflix
+NCLH;Norwegian Cruise Line Holdings Ltd.
+NVDA;NVIDIA Corporation
+NXPI;NXP Semiconductors N.V.
+ORLY;O'Reilly Automotive
+PCAR;PACCAR Inc.
+PAYX;Paychex
+PYPL;PayPal Holdings
+QCOM;QUALCOMM Incorporated
+REGN;Regeneron Pharmaceuticals
+ROST;Ross Stores
+SBAC;SBA Communications Corporation
+STX;Seagate Technology PLC
+SIRI;Sirius XM Holdings Inc.
+SWKS;Skyworks Solutions
+SBUX;Starbucks Corporation
+SRCL;Stericycle
+SYMC;Symantec Corporation
+TMUS;T-Mobile US
+TSLA;Tesla Motors
+TXN;Texas Instruments Incorporated
+KHC;The Kraft Heinz Company
+PCLN;The Priceline Group Inc.
+TSCO;Tractor Supply Company
+TRIP;TripAdvisor
+FOX;Twenty-First Century Fox
+FOXA;Twenty-First Century Fox
+ULTA;Ulta Salon
+VRSK;Verisk Analytics
+VRTX;Vertex Pharmaceuticals Incorporated
+VIAB;Viacom Inc.
+VOD;Vodafone Group Plc
+WBA;Walgreens Boots Alliance
+WDC;Western Digital Corporation
+WFM;Whole Foods Market
+XLNX;Xilinx
+YHOO;Yahoo! Inc.
