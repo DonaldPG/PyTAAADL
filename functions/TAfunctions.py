@@ -2,13 +2,10 @@ import sys
 import datetime
 import numpy as np
 from numpy import isnan
-from functions.yahooFinance import getQuote
-from functions.GetParams import *
-from functions.CheckMarketOpen import *
+import configparser
+
 from functions.allstats import *
 from matplotlib.pylab import *
-from functions.GetParams import *
-
 
 #---------------------------------------------
 
@@ -30,6 +27,139 @@ def _substringfinder(mylist, pattern):
         if mylist[i] == pattern[0] and mylist[i:i+len(pattern)] == pattern:
             matches.append(pattern)
     return len(matches)
+
+
+def fix_params_file(config_filename, verbose=False):
+    import os
+
+    current_folder = os.getcwd()
+
+    fn_path, fn = os.path.split(config_filename)
+
+    os.chdir(fn_path)
+    config_filename_bak = fn.replace(".txt",".bak.txt")
+
+    if os.path.isfile(config_filename_bak):
+        return
+
+    import shutil
+    #print("config_filename = ", fn)
+    #print("backed-up config_filename_bak = ", config_filename_bak)
+    shutil.copy(fn, config_filename_bak)
+
+    with open(config_filename_bak,'r') as f:
+        text = f.read()
+        text_list = text.split("\n")
+        previous_labels = []
+        edited_text_list = []
+        for i, line in enumerate(text_list):
+            label = line.split(":")[0]
+            if label not in previous_labels:
+                edited_text_list.append(line+"\n")
+            previous_labels.append(label)
+
+    with open(fn,'w') as f:
+        for text in edited_text_list:
+            f.write(text)
+
+    os.chdir(current_folder)
+    if verbose:
+        print("    ... params file successfully processed for duplicate keys")
+
+    return
+
+
+def get_params(config_filename):
+
+    # --------------------------------------------------
+    # Input parameters
+    # --------------------------------------------------
+
+    fix_params_file(config_filename)
+
+    parser = configparser.ConfigParser()
+    #configfile = open(config_filename, "r")
+    parser.read(config_filename)
+
+    try:
+        perform_batch_normalization = parser.get("training_params", "perform_batch_normalization")
+    except:
+        perform_batch_normalization = True
+
+    try:
+        use_dense_layers = parser.get("training_params", "use_dense_layers")
+    except:
+        use_dense_layers = False
+
+    try:
+        feature_map_factor = parser.get("training_params", "feature_map_factor")
+    except:
+        feature_map_factor = 1
+
+    try:
+        loss_function = parser.get("training_params", "loss function")
+    except:
+        loss_function = 'mse'
+
+    try:
+        optimizer_choice = parser.get("training_params", "optimizer_choice")
+    except:
+        optimizer_choice = 'RMSprop'
+
+    try:
+        use_leaky_relu = parser.get("training_params", "use_leaky_relu")
+        leaky_relu_alpha = parser.get("training_params", "leaky_relu_alpha")
+    except:
+        use_leaky_relu = False
+        leaky_relu_alpha = 0.05
+
+    try:
+        use_separable = parser.get("training_params", "use_separable")
+    except:
+        use_separable = False
+
+    num_stocks = parser.get("training_params", "num_stocks")
+    increments = parser.get("training_params", "increments")
+    num_periods_history = parser.get("training_params", "num_periods_history")
+    first_history_index = parser.get("training_params", "first_history_index")
+    try:
+        _sharpe_ratio_system = parser.get("training_params", "_sharpe_ratio_system")
+    except:
+        _sharpe_ratio_system = 0.
+    try:
+        _sharpe_ratio_recent_system = parser.get("training_params", "_sharpe_ratio_recent_system")
+    except:
+        _sharpe_ratio_recent_system = 0.
+
+    weights_filename = parser.get("training_params", "weights_filename")
+    model_json_filename = parser.get("training_params", "model_json_filename")
+
+    # put params in a dictionary
+    params = {}
+    params['perform_batch_normalization'] = perform_batch_normalization
+    params['use_dense_layers'] = use_dense_layers
+    params['use_leaky_relu'] = use_leaky_relu
+    params['use_separable'] = use_separable
+    params['leaky_relu_alpha'] = float(leaky_relu_alpha)
+
+    params['feature_map_factor'] = int(feature_map_factor)
+    params['optimizer_choice'] = optimizer_choice
+    params['loss_function'] = loss_function
+    params['num_stocks'] = int(num_stocks)
+    _increments = increments.replace(" ",",").replace("[,","[").replace(",,",",")
+    params['increments'] = eval(_increments)
+    params['num_periods_history'] = int(num_periods_history)
+    params['first_history_index'] = int(first_history_index)
+    params['_sharpe_ratio_system'] = float(_sharpe_ratio_system)
+    params['_sharpe_ratio_recent_system'] = float(_sharpe_ratio_recent_system)
+
+    params['weights_filename'] = weights_filename
+    params['model_json_filename'] = model_json_filename
+    #print("params = ", params)
+
+    return params
+
+
 
 """
 def generateExamples(datearray,adjClose,first_history_index,num_periods_history,increments,output_incr='monthly'):
@@ -259,6 +389,129 @@ def generateExamples(datearray,adjClose,first_history_index,num_periods_history,
     return rgb_image, forecast, dates, company_name
 
 
+def generateExamplesForDate(predict_date,datearray,adjClose,num_periods_history,increments,output_incr='monthly',verbose=False):
+
+    # output_incr can be 'monthly', 'weekly', or 'daily'
+
+    # make certain 'increments' is sorted in ascending order
+    increments.sort()
+
+    invalid_count = 0
+    dates = []
+    rgb_image = np.array([])
+
+    first_index = np.argmin(np.abs(np.array(datearray)-predict_date))
+
+    for jdate in range(first_index, first_index +1):
+
+        # create 1 row per company in adjClose
+        # create 1 image at beginning of each month, week, or day
+        if output_incr == 'monthly':
+            output_test = jdate == first_history_index or datearray[jdate].year > datearray[jdate-1].year or datearray[jdate].month > datearray[jdate-1].month
+        if output_incr == 'midmonth':
+            output_test = jdate == first_history_index \
+            or datearray[jdate].weekday() < datearray[jdate-1].weekday() \
+            and (12 <= datearray[jdate].day < 19)
+        elif output_incr == 'weekly':
+            output_test = jdate == first_history_index or datearray[jdate].weekday() < datearray[jdate-1].weekday()
+        elif output_incr == 'daily':
+            output_test = True
+
+        if datearray[jdate].year > datearray[jdate-1].year:
+            if verbose:
+                print(" ... processing date : ", datearray[jdate]," ... invalid/valid counts = ",invalid_count,", ",rgb_image.shape[-1])
+
+        if output_test == True:
+
+            # create a row for each company
+            num_companies = 0
+            avg_forallcompanies = np.zeros((num_periods_history,len(increments)),'float')
+
+            for iCompany in range(adjClose.shape[0]):
+
+                _quotes_image = np.zeros((num_periods_history+1,len(increments)),'float')
+                for i,iincr in enumerate(increments):
+
+                    _quotes_image[:,i] = adjClose[iCompany,jdate-num_periods_history*iincr:jdate+1:iincr].copy()
+
+                    if iincr==increments[0]:
+                        invalid_quote_count = 0
+                    if _quotes_image[0,i]==0.:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                    if _quotes_image[-1,i] == 0.:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                    nantest = _quotes_image[:,i]
+                    if nantest[np.isnan(nantest)].shape[0] > 0 or nantest[np.isinf(nantest)].shape[0] > 0:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                if invalid_quote_count > 0:
+                    if verbose:
+                        print("invalid quotes for iCompany,date : ",iCompany, datearray[jdate])
+                    continue
+
+                # save as gain/loss for period (drop first value)
+                _quotes_image = _quotes_image[1:,:] / _quotes_image[:-1,:] - 1.
+
+                for i,iincr in enumerate(increments):
+
+                    if iincr==increments[0]:
+                        invalid_quote_count = 0
+
+                    _quote_image_list = list(_quotes_image[:,i])
+                    _quote_image_list_invalid = _substringfinder(_quote_image_list, [0.0,0.0])
+
+                    if _quote_image_list_invalid>0:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                if invalid_quote_count > 0:
+                    continue
+
+                # combine and reshape
+                #rgb_row = np.dstack((_quotes_image,_quotes_image)).swapaxes(-2,-1)
+                rgb_row = np.hstack((_quotes_image,_quotes_image))
+                #print ("rgb_row.shape = ", rgb_row.shape)
+                rgb_row = np.reshape(rgb_row,(rgb_row.shape[0],2*len(increments),1))
+
+                try:
+                    rgb_image = np.dstack((rgb_image,rgb_row))
+                    forecast = np.hstack((forecast,adjClose[iCompany,jdate+22]/adjClose[iCompany,jdate]-1.))
+                    dates.append( datearray[jdate] )
+                    company_name.append( iCompany )
+                except:
+                    # need to initialize rgb_image
+                    # indices order will be periods, iCompany
+                    rgb_image = rgb_row
+                    forecast = adjClose[iCompany,jdate+22]/adjClose[iCompany,jdate]-1.
+                    dates.append( datearray[jdate] )
+                    company_name = [ iCompany ]
+
+                num_companies += 1
+
+                avg_forallcompanies += rgb_row[:,len(increments):,0]
+
+            avg_forallcompanies /= num_companies
+            for iCompany in range(1,num_companies+1):
+                rgb_image[:,len(increments):,-iCompany] -= avg_forallcompanies
+
+    #print ("rgb_image.shape = ", rgb_image.shape)
+    rgb_image = rgb_image.swapaxes(0,2)
+    rgb_image = rgb_image.swapaxes(1,2)
+    #print ("rgb_image.shape = ", rgb_image.shape)
+    rgb_image = rgb_image.reshape((rgb_image.shape[0],num_periods_history,2,len(increments)))
+    forecast = forecast.reshape(forecast.shape[0],1)
+    rgb_image = rgb_image.swapaxes(-2,-1)
+
+    if verbose:
+        print(" ... Labeled data successfully created ...")
+    return rgb_image, forecast, dates, company_name
+
+
 def generatePredictionInput(predict_date,datearray,adjClose,first_history_index,num_periods_history,increments,output_incr='monthly',verbose=False):
 
     # predict_date is a single date for which input will be re-formatted to make predictions using DL
@@ -369,7 +622,7 @@ def generatePredictionInput(predict_date,datearray,adjClose,first_history_index,
     return rgb_image, dates, company_name
 
 
-def generateExamples3layer(datearray,adjClose,first_history_index,num_periods_history,increments,output_incr='monthly'):
+def generateExamples3layer(datearray,adjClose,first_history_index,num_periods_history,increments,output_incr='monthly',verbose=False):
 
     # output_incr can be 'monthly', 'weekly', or 'daily'
 
@@ -398,7 +651,8 @@ def generateExamples3layer(datearray,adjClose,first_history_index,num_periods_hi
             output_test = True
 
         if datearray[jdate].year > datearray[jdate-1].year:
-            print(" ... processing date : ", datearray[jdate]," ... invalid/valid counts = ",invalid_count,", ",rgb_image.shape[-1])
+            if verbose:
+                print(" ... processing date : ", datearray[jdate]," ... invalid/valid counts = ",invalid_count,", ",rgb_image.shape[-1])
 
         if output_test == True:
 
@@ -430,7 +684,8 @@ def generateExamples3layer(datearray,adjClose,first_history_index,num_periods_hi
                         invalid_quote_count += 1
 
                 if invalid_quote_count > 0:
-                    print("invalid quotes for iCompany,date : ",iCompany, datearray[jdate])
+                    if verbose:
+                        print("invalid quotes for iCompany,date : ",iCompany, datearray[jdate])
                     continue
 
                 # save as gain/loss for period (drop first value)
@@ -496,14 +751,329 @@ def generateExamples3layer(datearray,adjClose,first_history_index,num_periods_hi
             #print('wo mean   rgb_image[:,3:6,-1] = ',rgb_image[:,3:6,-1])
             #print('variance  rgb_image[:,6:9,-1] = ',rgb_image[:,6:9,-1])
 
-    print (" ... rgb_image.shape = ",rgb_image.shape)
+    if verbose:
+        print (" ... rgb_image.shape = ",rgb_image.shape)
     rgb_image = rgb_image.swapaxes(0,2)
     rgb_image = rgb_image.swapaxes(1,2)
     rgb_image = rgb_image.reshape((rgb_image.shape[0],num_periods_history,3,len(increments)))
     rgb_image = rgb_image.swapaxes(2,3)
     forecast = forecast.reshape(forecast.shape[0],1)
 
-    print(" ... Labeled data successfully created ...")
+    if verbose:
+        print(" ... Labeled data successfully created ...")
+    return rgb_image, forecast, dates, company_name
+
+
+def generateExamples3layerGen(datearray,adjClose,first_history_index,num_periods_history,increments,output_incr='monthly',verbose=False):
+
+    ###
+    ### attempt to re-write using generators instead of for-loops
+    ###
+    # output_incr can be 'monthly', 'weekly', or 'daily'
+
+    # make certain 'increments' is sorted in ascending order
+    increments.sort()
+
+    dates = []
+    rgb_image = np.array([])
+
+    first_index = max( int(first_history_index), int(increments[-1]*num_periods_history) )
+
+    def gen_rgb_row(jdate,datearray,adjClose,num_periods_history,increments,output_incr='monthly',verbose=False):
+
+        #print("jdate, datearray[jdate], increments = ", jdate, datearray[jdate], increments)
+
+        output_test = True
+
+        if output_test == True:
+
+            # create a row for each company
+
+            _quotes_image = np.zeros((adjClose.shape[0], num_periods_history+1, len(increments)), 'float')
+            _quotes_image_gains = np.zeros((adjClose.shape[0], num_periods_history, len(increments)), 'float')
+            valid_indices_count = np.zeros((adjClose.shape[0]), 'int')
+            for i,iincr in enumerate(increments):
+
+                _quotes_image[:,:,i] = adjClose[:,jdate-num_periods_history*iincr:jdate+1:iincr].copy()
+                _quotes_image_gains[:,:,i] = _quotes_image[:,1:,i] / _quotes_image[:,:-1,i] - 1.
+                if iincr==increments[0]:
+                    invalid_quote_count = np.zeros((_quotes_image_gains.shape[0]), 'int')
+                #if _quotes_image[:,0,i]==0.:
+
+                _test = (_quotes_image_gains[:,0,i]==0.)
+                invalid_quote_count[_test] += np.ones((adjClose.shape[0]), 'int')[_test]
+
+                _test = (_quotes_image_gains[:,-1,i]==0.)
+                invalid_quote_count[_test] += np.ones((adjClose.shape[0]), 'int')[_test]
+
+                _test = (np.isnan(_quotes_image_gains[:,:,i]))
+                _test2 = np.sum( _test == True, axis=1)
+                invalid_quote_count[_test2] += np.ones((adjClose.shape[0]), 'int')[_test2]
+
+                _test = (np.isinf(_quotes_image_gains[:,:,i]))
+                _test2 = np.sum( _test == True, axis=1)
+                invalid_quote_count[_test2] += np.ones((adjClose.shape[0]), 'int')[_test2]
+
+                invalid_indices = np.arange(adjClose.shape[0])[invalid_quote_count != 0]
+                valid_indices_count[invalid_indices] += 1
+
+            # save as gain/loss for period (drop first value)
+            valid_indices = np.arange(adjClose.shape[0])[valid_indices_count == 0]
+            rgb_row = _quotes_image_gains[valid_indices,:,:]
+            _company_names = np.arange(adjClose.shape[0])[valid_indices]
+            _forecasts = adjClose[:,jdate+22] / adjClose[:,jdate] - 1.
+            _forecasts = _forecasts[valid_indices]
+            _dates = [datearray[jdate] for i in range(_forecasts.shape[0])]
+
+            #print('- 0 - rgb_row.shape = ', rgb_row.shape)
+            #rgb_row = np.hstack((rgb_row,rgb_row,rgb_row))
+            #print('- 1 - rgb_row.shape = ', rgb_row.shape)
+            #rgb_row = rgb_row.swapaxes(2,3)
+            #print('- 2 - rgb_row.shape = ', rgb_row.shape)
+            #rgb_row = np.reshape(rgb_row,(rgb_row.shape[0],rgb_row.shape[1],rgb_row.shape[2],1))
+            #print('- 0 - datearray[jdate], _forecasts.shape = ', datearray[jdate], _forecasts.shape)
+            yield rgb_row, _forecasts, _dates, _company_names
+
+    dates_list = []
+    for jdate in range(first_index, adjClose.shape[1]-22):
+        # create 1 row per company in adjClose
+        # create 1 image at beginning of each month, week, or day
+        if output_incr == 'monthly':
+            output_test = jdate == first_history_index or \
+                          datearray[jdate].year > datearray[jdate-1].year or \
+                          datearray[jdate].month > datearray[jdate-1].month
+        if output_incr == 'midmonth':
+            output_test = jdate == first_history_index \
+            or datearray[jdate].weekday() < datearray[jdate-1].weekday() \
+            and (12 <= datearray[jdate].day < 19)
+        elif output_incr == 'weekly':
+            output_test = jdate == first_history_index or \
+                          datearray[jdate].weekday() < datearray[jdate-1].weekday()
+        elif output_incr == 'daily':
+            output_test = True
+
+        if output_test is True:
+            dates_list.append(jdate)
+        '''
+            if verbose:
+                print(" ... date to process : ", datearray[jdate])
+        '''
+
+    if verbose:
+        print("first_index = ", first_index)
+        print("dates_list first,last,len = ", dates_list[0],dates_list[-1],len(dates_list))
+        print("datearray.shape = ", len(datearray))
+        print("adjClose.shape = ", adjClose.shape)
+
+    for jdate in dates_list:
+
+        # create a row for each company
+        num_companies = 0
+        summ = np.zeros((num_periods_history,len(increments)),'float')
+        sumSquared = np.zeros((num_periods_history,len(increments)),'float')
+
+        for rgb_row, _forecast, _dates, _company_name in gen_rgb_row(jdate,
+                                                                     datearray,
+                                                                     adjClose,
+                                                                     num_periods_history,
+                                                                     increments,
+                                                                     output_incr='monthly',
+                                                                     verbose=False):
+
+            num_companies = rgb_row.shape[0]
+
+            rgb_row = np.dstack((rgb_row, rgb_row, rgb_row))
+            for i,iincr in enumerate(increments):
+                summ = rgb_row[:,:len(increments),i].sum(axis=-1)
+                sumSquared = rgb_row[:,:len(increments),i].sum(axis=-1)**2
+                #print (" ... 1. rgb_row.shape = ",rgb_row.shape, rgb_row[int(rgb_row.shape[0]/2),:,:])
+                #print (" ... 1. _forecast.shape = ",np.array(_forecast).shape)
+                #print (" ... 1. _dates.shape = ",np.array(_dates).shape)
+                #print (" ... 1. _company_name.shape = ",_company_name.shape)
+
+                #print (" ... 2. summ.shape = ",summ.shape)
+                #print (" ... 3. sumSquared.shape = ",sumSquared.shape)
+                avg_forallcompanies = summ / num_companies
+                var_forallcompanies = (sumSquared - (summ**2)/num_companies)/(num_companies-1)
+
+                #print (" ... 4. avg_forallcompanies.shape = ",avg_forallcompanies.reshape(avg_forallcompanies.shape[0],1).shape)
+                #print (" ... 4. var_forallcompanies.shape = ",var_forallcompanies.shape)
+                #print (" ... 4. rgb_row[:,:,i+len(increments)].shape = ",rgb_row[:,:,i+len(increments)].shape)
+
+                rgb_row[:,:,i+len(increments)] -= avg_forallcompanies.reshape(avg_forallcompanies.shape[0],1)
+                rgb_row[:,:,i+len(increments)*2] = var_forallcompanies.reshape(np.array(_forecast).shape[0],1)
+
+            try:
+                rgb_image = np.vstack((rgb_image, rgb_row))
+                forecast = np.hstack((forecast, _forecast))
+                dates = np.hstack((dates, _dates))
+                company_name = np.hstack((company_name, _company_name))
+                #print (" ... 5. rgb_image.shape = ",rgb_image.shape)
+                #print (" ... 5. forecast.shape = ",forecast.shape)
+            except:
+                # need to initialize rgb_image
+                # indices order will be periods, iCompany
+                rgb_image = rgb_row
+                forecast = _forecast
+                dates = _dates
+                company_name = _company_name
+
+
+        '''
+        if verbose:
+            if datearray[jdate].year > datearray[jdate-1].year:
+                #print("  ... jdate, iCompany, rgb_row.shape = ", jdate,iCompany, rgb_row.shape)
+                print("  ... progress ... finished ", datearray[jdate-1].year)
+        '''
+
+    if verbose:
+        print (" ... rgb_image.shape = ",rgb_image.shape)
+    rgb_image = rgb_image.reshape((rgb_image.shape[0],num_periods_history,3,len(increments)))
+    rgb_image = rgb_image.swapaxes(2,3)
+    forecast = forecast.reshape(forecast.shape[0],1)
+
+    if verbose:
+        print(" ... Labeled data successfully created ...")
+    return rgb_image, forecast, dates, company_name
+
+
+
+def generateExamples3layerForDate(predict_date,
+                                  datearray,
+                                  adjClose,
+                                  num_periods_history,
+                                  increments,
+                                  output_incr='monthly',
+                                  verbose=False):
+
+    # output_incr can be 'monthly', 'weekly', or 'daily'
+
+    # make certain 'increments' is sorted in ascending order
+    increments.sort()
+
+    invalid_count = 0
+    dates = []
+    rgb_image = np.array([])
+
+    first_index = np.argmin(np.abs(np.array(datearray)-predict_date))
+
+    for jdate in range(first_index, first_index +1):
+
+        # create 1 row per company in adjClose
+        # create 1 image at beginning of each month, week, or day
+        output_test = True
+
+        if datearray[jdate].year > datearray[jdate-1].year:
+            if verbose:
+                print(" ... processing date : ", datearray[jdate]," ... invalid/valid counts = ",invalid_count,", ",rgb_image.shape[-1])
+
+        if output_test == True:
+
+            # create a row for each company
+            num_companies = 0
+            summ = np.zeros((num_periods_history,len(increments)),'float')
+            sumSquared = np.zeros((num_periods_history,len(increments)),'float')
+
+            for iCompany in range(adjClose.shape[0]):
+
+                _quotes_image = np.zeros((num_periods_history+1,len(increments)),'float')
+                for i, iincr in enumerate(increments):
+
+                    _quotes_image[:,i] = adjClose[iCompany,jdate-num_periods_history*iincr:jdate+1:iincr].copy()
+
+                    if iincr==increments[0]:
+                        invalid_quote_count = 0
+                    if _quotes_image[0,i]==0.:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                    if _quotes_image[-1,i] == 0.:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                    nantest = _quotes_image[:,i]
+                    if nantest[np.isnan(nantest)].shape[0] > 0 or nantest[np.isinf(nantest)].shape[0] > 0:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                if invalid_quote_count > 0:
+                    if verbose:
+                        print("invalid quotes for iCompany,date : ",iCompany, datearray[jdate])
+                    continue
+
+                # save as gain/loss for period (drop first value)
+                _quotes_image = _quotes_image[1:,:] / _quotes_image[:-1,:] - 1.
+
+                for i,iincr in enumerate(increments):
+
+                    if iincr==increments[0]:
+                        invalid_quote_count = 0
+
+                    _quote_image_list = list(_quotes_image[:,i])
+                    _quote_image_list_invalid = _substringfinder(_quote_image_list, [0.0,0.0])
+
+                    if _quote_image_list_invalid>0:
+                        invalid_count += 1
+                        invalid_quote_count += 1
+
+                if invalid_quote_count > 0:
+                    continue
+
+                #print("_quotes_image[:,0] = ",_quotes_image[:,0])
+                #print("_quotes_image[:,1] = ",_quotes_image[:,1])
+                #print("_quotes_image[:,2] = ",_quotes_image[:,2])
+
+                # combine and reshape
+                rgb_row = np.dstack((_quotes_image,_quotes_image,_quotes_image)).swapaxes(1,2)
+                rgb_row = np.reshape(rgb_row,(rgb_row.shape[0],3*len(increments),1))
+                #print('rgb_row.shape = ', rgb_row.shape)
+                #print('rgb_row = ', rgb_row)
+
+                try:
+                    rgb_image = np.dstack((rgb_image,rgb_row))
+                    forecast = np.hstack((forecast,adjClose[iCompany,jdate+22]/adjClose[iCompany,jdate]-1.))
+                    dates.append( datearray[jdate] )
+                    company_name.append( iCompany )
+                except:
+                    # need to initialize rgb_image
+                    # indices order will be periods, iCompany
+                    rgb_image = rgb_row
+                    forecast = adjClose[iCompany,jdate+22]/adjClose[iCompany,jdate]-1.
+                    dates.append( datearray[jdate] )
+                    company_name = [ iCompany ]
+
+                num_companies += 1
+
+                summ += rgb_row[:,:len(increments),0]
+                sumSquared += rgb_row[:,:len(increments),0]**2
+                #print (" ... rgb_row.shape = ",rgb_row.shape,rgb_row)
+
+            #print (" ... summ = ",summ)
+            #print (" ... sumSquared = ",sumSquared)
+            avg_forallcompanies = summ / num_companies
+            var_forallcompanies = (sumSquared - (summ**2)/num_companies)/(num_companies-1)
+            #print (" ... avg_forallcompanies = ",avg_forallcompanies)
+            #print (" ... var_forallcompanies = ",var_forallcompanies)
+            #print (" ... rgb_image.shape = ",rgb_image.shape)
+            #print (" ... rgb_row.shape = ",rgb_row.shape)
+
+            for iCompany in range(1,num_companies+1):
+                rgb_image[:,len(increments):2*len(increments),-iCompany] -= avg_forallcompanies
+                rgb_image[:,2*len(increments):,-iCompany] = var_forallcompanies
+            #print('gain/loss rgb_image[:,:3,-1] = ',rgb_image[:,:3,-1])
+            #print('wo mean   rgb_image[:,3:6,-1] = ',rgb_image[:,3:6,-1])
+            #print('variance  rgb_image[:,6:9,-1] = ',rgb_image[:,6:9,-1])
+
+    if verbose:
+        print (" ... rgb_image.shape = ",rgb_image.shape)
+    rgb_image = rgb_image.swapaxes(0,2)
+    rgb_image = rgb_image.swapaxes(1,2)
+    rgb_image = rgb_image.reshape((rgb_image.shape[0],num_periods_history,3,len(increments)))
+    rgb_image = rgb_image.swapaxes(2,3)
+    forecast = forecast.reshape(forecast.shape[0],1)
+
+    if verbose:
+        print(" ... Labeled data successfully created ...")
     return rgb_image, forecast, dates, company_name
 
 
@@ -562,7 +1132,8 @@ def generatePredictionInput3layer(predict_date,datearray,adjClose,first_history_
                         invalid_quote_count += 1
 
                 if invalid_quote_count > 0:
-                    print("invalid quotes for iCompany,date : ",iCompany, datearray[jdate])
+                    if verbose:
+                        print("invalid quotes for iCompany,date : ",iCompany, datearray[jdate])
                     continue
 
                 # save as gain/loss for period (drop first value)
@@ -615,7 +1186,8 @@ def generatePredictionInput3layer(predict_date,datearray,adjClose,first_history_
     rgb_image = rgb_image.reshape((rgb_image.shape[0],num_periods_history,3,len(increments)))
     rgb_image = rgb_image.swapaxes(2,3)
 
-    print(" ... Labeled data successfully created ...")
+    if verbose:
+        print(" ... Labeled data successfully created ...")
     return rgb_image, dates, company_name
 
 

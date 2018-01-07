@@ -1,11 +1,12 @@
 import numpy as np
+import math
 
 class allstats():
 
     def __init__(self,x):
         self.data = x
 
-    def sharpe(self):
+    def sharpe(self, periods_per_year=252):
         x = self.data
         from scipy.stats import gmean
         # The mad of nothing is null
@@ -17,7 +18,7 @@ class allstats():
         dailygainloss[ np.isnan(dailygainloss) ] = 1.
         dailygainloss[ np.isinf(dailygainloss) ] = 1.
         # Find the sharpe ratio of the list (assume x is daily prices)
-        sharpe =  ( gmean(dailygainloss)**252 -1. ) / ( np.std(dailygainloss)*np.sqrt(252) )
+        sharpe =  ( gmean(dailygainloss)**periods_per_year -1. ) / ( np.std(dailygainloss)*np.sqrt(periods_per_year) )
         return sharpe
 
     def monthly_sharpe(self):
@@ -34,6 +35,42 @@ class allstats():
         # Find the sharpe ratio of the list (assume x is daily prices)
         sharpe =  ( gmean(dailygainloss)**12 -1. ) / ( np.std(dailygainloss)*np.sqrt(12) )
         return sharpe
+
+    def sortino(self, risk_free_rate = 0., target_rate=0.):
+        # adapted from www.turingfinance.com/computational-investing-with-python-week-one/
+        def lpm(returns, threshold, order):
+            # This method returns a lower partial moment of the returns
+            # Create an array he same length as returns containing the minimum return threshold
+            threshold_array = np.empty(len(returns))
+            threshold_array.fill(threshold)
+            # Calculate the difference between the threshold and the returns
+            diff = threshold_array - returns
+            # Set the minimum of each to 0
+            diff = diff.clip(min=0)
+            # Return the sum of the different to the power of order
+            return np.sum(diff ** order) / len(returns)
+        def sortino_ratio(er, returns, rf, target_rate=0):
+            return (er - rf) / math.sqrt(lpm(returns, target_rate, 2))
+        x = self.data
+        # The mad of nothing is null
+        if len(x) == 0:
+            return []
+        _x = x.astype('float')
+        _x[_x<=0.] = 1.e-15
+        dailypercentgainloss = _x[1:] / _x[:-1] - 1.
+        if dailypercentgainloss.min() > 0.:
+            # rescale so that smallest gain has sign reversed
+            a_dailypercentgainloss = dailypercentgainloss.copy()
+            a_dailypercentgainloss.sort()
+            a_dailypercentgainloss[0] *= -1.
+            dailypercentgainloss = a_dailypercentgainloss * 1.
+            #print('    ... smallest values re-scaled')
+        dailypercentgainloss[ np.isnan(dailypercentgainloss) ] = 0.
+        dailypercentgainloss[ np.isinf(dailypercentgainloss) ] = 0.
+        er = dailypercentgainloss.mean()
+        # Find the sharpe ratio of the list (assume x is daily prices)
+        sortino = sortino_ratio(er, dailypercentgainloss, risk_free_rate, target_rate=0.)
+        return sortino
 
     def mad(self):
         # [Median Absolute Deviation](http://en.wikipedia.org/wiki/Median_absolute_deviation)
@@ -166,6 +203,9 @@ class allstats():
         #Find the median value of that list
         return np.median(x)
 
+
+
+
 '''
 # do example
 x = np.array( ( 1,4,3,5,6,9,22,453,1,3,5,9,5,4,3,7,4,8,0,12,-12) )
@@ -185,4 +225,12 @@ plt.plot(allstats(np.diff(x)).z_score())
 plt.plot(allstats(np.diff(x)).med_score())
 plt.grid()
 
+
+# Returns from the portfolio (r) and market (m)
+r = np.random.uniform(0., 2., 50)
+r = np.random.normal(1.1, .25, 50)
+# Risk-adjusted return based on Volatility
+print("Sortino Ratio =", allstats(r).sortino(risk_free_rate=0., target_rate=0.))
 '''
+
+
