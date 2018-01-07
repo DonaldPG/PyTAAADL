@@ -6,7 +6,7 @@ a python project for practicing Deep Learning techniques using keras and tensorf
 
 Dependencies:
 
-numpy scipy tensorflow keras time datetime matplotlib
+numpy pandas scipy tensorflow keras time datetime matplotlib
 
 Usage:
 
@@ -14,8 +14,19 @@ create an hdf file that holds stock quotes (as in repository pyTAAA)
 
 "python re-generateHDF5.py"
 
-run PyTAAADL with the command: "python SP500_DL_3layer_DropRandomStocks_monthly_sensitivityTest.py"
+run PyTAAADL with the commands:
+    1. Train many deep learning networks with a variety of randomly chosen parameters. Requires folder in repo named pngs
+       "python PyTAAADL__0_train_many_DL_models.py"
 
+    2. Choose best performing DL models to carry forward for use in ensemble model (system of ensemble models). Requires folder in repo named pngs/best_performers4
+       "python PyTAAADL__1_choose_best_performing_trained_models.py"
+       
+    3. Compute ensemble models from amongst best performing DL models in folder pngs/best_performers4. Creates pandas dataframe for input to next step
+       "python PyTAAADL__2_create_dynamic_persistence_inputs.py"
+
+    4. Evaluate parameters to dynamically alter number_stocks, metric used to subset stocks from ensemble model, and number of months to persist choice of number_stocks, metrics.
+       "python PyTAAADL__3_evaluate_dynamic_persistence_inputs.py"
+       
 PyTAAADL recommends new stock holdings based on training using previous stock histories (DL data) combined with known stock gains/losses one month later (DL labels). PyTAAADL uses this trained network when run at the beginning of a month to suggest stocks to purchase and hold for one month. Repeat each month. It is currently untested but has been trained and backtested to suggest that chosen stocks will perform better than a market index such as the Nasdaq 100 index.
 
 It's up to the user to decide if they want to do anything with the recommendations. This is designed and provided for entertainment only. The author does not accept and responsibility for anything done by others with the recommendations.
