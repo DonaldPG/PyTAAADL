@@ -4,17 +4,17 @@ Tactical Asset Allocation using Deep Learning
 
 a python project for practicing Deep Learning techniques using keras and tensorflow.
 
-Dependencies:
+##Dependencies:
 
 numpy pandas scipy tensorflow keras time datetime matplotlib
 
-Usage:
+##Usage:
 
 create an hdf file that holds stock quotes (as in repository pyTAAA)
 
 "python re-generateHDF5.py"
 
-run PyTAAADL with the commands:
+##run PyTAAADL with the commands:
 
 1. "python PyTAAADL__0_train_many_DL_models.py" -- Train many deep learning networks with a variety of randomly chosen parameters. Requires folder in repo named pngs
        
@@ -28,8 +28,8 @@ PyTAAADL recommends new stock holdings based on training using previous stock hi
 
 It's up to the user to decide if they want to do anything with the recommendations. This is designed and provided for entertainment only. The author does not accept and responsibility for anything done by others with the recommendations.
 
-Notes:
+##Notes:
 
 Backtest plots that start ca. 1991 contain different stocks for historical testing than those created by 're-generateHDF5.py' in the PyTAAA repository. Therefore backtest plots will not match those created by PyTAAADL. This is due to changes in the Nasdaq 100 index over time.
 
-The backtest plots show only an approximation to "Buy & Hold" investing. This is particularly true for the Daily backtest that is created every time the PyTAAA code runs. Buy & Hold is approximated on the plot by the red value curves. The calculations assume that equal dollar investments are made in all the current stocks in the Nasdaq 100 index. For example, note that the current Nasdaq 100 stocks as of February 2014 did not have the same performance during 2000-2003 as the stocks in the index during 2000-2003. Whereas the Nasdaq Index lost more than 50% of its peak value, the stocks that are in the index as of February 2014 AND were also in the index in 2000, maintained nearly constant value over the period. Similar cautions need to be made about the historical backtest performance of PyTAAA trading recommendations. Therefore, hypothetical performance as portrayed by PyTAAADL backtests should be viewed as untested and unverified. Actual investment performance under real market conditions will almost certainly be lower.
+The backtest plots show only an approximation to "Buy & Hold" investing. This is particularly true for the Daily backtest that is created every time the PyTAAA code runs. Buy & Hold is approximated on the plot by the red value curves. The calculations assume that equal dollar investments are made in all the current stocks in the Nasdaq 100 index. For example, note that the current Nasdaq 100 stocks as of February 2014 did not have the same performance during 2000-2003 as the stocks in the index during 2000-2003. Whereas the Nasdaq Index lost more than 50% of its peak value, the stocks that are in the index as of February 2014 AND were also in the index in 2000, maintained nearly constant value over the period. Similar cautions need to be made about the historical backtest performance of PyTAAADL trading recommendations. Therefore, hypothetical performance as portrayed by PyTAAADL backtests should be viewed as untested and unverified. Actual investment performance under real market conditions will almost certainly be lower.
