@@ -4,17 +4,17 @@ Tactical Asset Allocation using Deep Learning
 
 a python project for practicing Deep Learning techniques using keras and tensorflow.
 
-## Dependencies:
+### Dependencies:
 
 numpy pandas scipy tensorflow keras time datetime matplotlib
 
-## Usage:
+### Usage:
 
 create an hdf file that holds stock quotes (as in repository pyTAAA)
 
 "python re-generateHDF5.py"
 
-## run PyTAAADL with the commands:
+### run PyTAAADL with the commands:
 
 1. "python PyTAAADL__0_train_many_DL_models.py" -- Train many deep learning networks with a variety of randomly chosen parameters. Requires folder in repo named pngs
        
@@ -24,13 +24,13 @@ create an hdf file that holds stock quotes (as in repository pyTAAA)
 
 4. "python PyTAAADL__3_evaluate_dynamic_persistence_inputs.py" -- Evaluate parameters to dynamically alter number_stocks, metric used to subset stocks from ensemble model, and number of months to persist choice of number_stocks, metrics.
        
-## PyTAAADL purpose
+### PyTAAADL purpose
 
 PyTAAADL recommends new stock holdings based on training using previous stock histories (DL data) combined with known stock gains/losses one month later (DL labels). PyTAAADL uses this trained network when run at the beginning of a month to suggest stocks to purchase and hold for one month. Repeat each month. It is currently untested but has been trained and backtested to suggest that chosen stocks will perform better than a market index such as the Nasdaq 100 index.
 
 It's up to the user to decide if they want to do anything with the recommendations. This is designed and provided for entertainment only. The author does not accept and responsibility for anything done by others with the recommendations.
 
-## Notes:
+### Notes:
 
 Backtest plots that start ca. 1991 contain different stocks for historical testing than those created by 're-generateHDF5.py' in the PyTAAA repository. Therefore backtest plots will not match those created by PyTAAADL. This is due to changes in the Nasdaq 100 index over time.
 
