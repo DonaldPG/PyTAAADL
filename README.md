@@ -8,7 +8,7 @@ a python project for practicing Deep Learning techniques using keras and tensorf
 
 numpy pandas scipy tensorflow keras time datetime matplotlib
 
-### Usage:
+### Prerequisite:
 
 create an hdf file that holds stock quotes (as in repository pyTAAA)
 
@@ -30,7 +30,7 @@ PyTAAADL recommends new stock holdings based on training using previous stock hi
 
 It's up to the user to decide if they want to do anything with the recommendations. This is designed and provided for entertainment only. The author does not accept and responsibility for anything done by others with the recommendations.
 
-### Notes:
+### Cautionary Notes:
 
 Backtest plots that start ca. 1991 contain different stocks for historical testing than those created by 're-generateHDF5.py' in the PyTAAA repository. Therefore backtest plots will not match those created by PyTAAADL. This is due to changes in the Nasdaq 100 index over time.
 
