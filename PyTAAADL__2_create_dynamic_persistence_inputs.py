@@ -13,19 +13,6 @@ import os
 import datetime
 import numpy as np
 import pandas
-import configparser
-
-from keras import backend as K
-from keras.models import model_from_json
-from keras.models import Sequential
-from keras.layers import Conv2D
-from keras.layers import Activation
-from keras.layers import LeakyReLU
-from keras.layers import MaxPooling2D
-from keras.layers import Dropout
-from keras.layers import Dense
-from keras.layers.normalization import BatchNormalization
-from keras.optimizers import RMSprop, Adam, Adagrad, Nadam
 
 from matplotlib import pyplot as plt
 
@@ -48,7 +35,12 @@ from functions.TAfunctions import _is_odd, \
                                   get_params, \
                                   interpolate, \
                                   cleantobeginning, \
-                                  cleantoend
+                                  cleantoend,\
+                                  build_model, \
+                                  get_predictions_input, \
+                                  one_model_prediction, \
+                                  ensemble_prediction
+
 from functions.UpdateSymbols_inHDF5 import UpdateHDF5, \
                                            loadQuotes_fromHDF
 
@@ -58,346 +50,13 @@ import matplotlib.gridspec as gridspec
 os.chdir(_cwd)
 
 
+# --------------------------------------------------
+# set filename for datafram containing model persistence input data.
+# --------------------------------------------------
 
-
-def get_predictions_input(config_filename, adjClose, datearray):
-
-    params = get_params(config_filename)
-
-    first_history_index = params['first_history_index']
-    num_periods_history = params['num_periods_history']
-    increments = params['increments']
-
-    print(" ... generating examples ...")
-    Xpredict, Ypredict, dates_predict, companies_predict = generateExamples3layerGen(datearray,
-                                               adjClose,
-                                               first_history_index,
-                                               num_periods_history,
-                                               increments,
-                                               output_incr='monthly')
-
-    print(" ... examples generated ...")
-    return Xpredict, Ypredict, dates_predict, companies_predict
-
-
-def build_model(config_filename, verbose=False):
-    # --------------------------------------------------
-    # build DL model
-    # --------------------------------------------------
-
-    params = get_params(config_filename)
-
-    optimizer_choice = params['optimizer_choice']
-    loss_function = params['loss_function']
-
-    weights_filename = params['weights_filename']
-    model_json_filename = params['model_json_filename']
-
-    # load model and weights from json and hdf files.
-    json_file = open(model_json_filename, 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    model = model_from_json(loaded_model_json)
-    # load weights into new model
-    model.load_weights(weights_filename)
-    if verbose:
-        print("    ... model successfully loaded from disk")
-
-    if optimizer_choice == 'RMSprop':
-        optimizer = RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.0)
-    elif optimizer_choice == 'Adam':
-        optimizer = Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    elif optimizer_choice == 'Adagrad':
-        optimizer = Adagrad(lr=0.005, epsilon=1e-08, decay=0.0)
-    elif optimizer_choice == 'Nadam':
-        optimizer = Nadam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004)
-
-    if verbose:
-        model.summary()
-    model.compile(optimizer=optimizer, loss=loss_function)
-
-    return model
-
-
-def one_model_prediction(imodel, first_history_index, datearray, adjClose, symbols, num_stocks, verbose=False):
-
-    # --------------------------------------------------
-    # build DL model
-    # --------------------------------------------------
-
-    config_filename = imodel.replace('.hdf','.txt')
-    print("\n ... config_filename = ", config_filename)
-    #print(".", end='')
-    model = build_model(config_filename)
-
-    # collect meta data for weighting ensemble_symbols
-    params = get_params(config_filename)
-    #num_stocks = params['num_stocks']
-    num_periods_history = params['num_periods_history']
-    increments = params['increments']
-
-    symbols_predict = symbols
-    Xpredict, Ypredict, dates_predict, companies_predict = generateExamples3layerGen(datearray,
-                                                                                  adjClose,
-                                                                                  first_history_index,
-                                                                                  num_periods_history,
-                                                                                  increments,
-                                                                                  output_incr='monthly')
-
-    dates_predict = np.array(dates_predict)
-    companies_predict = np.array(companies_predict)
-
-    # --------------------------------------------------
-    # make predictions monthly for backtesting
-    # - there might be some bias since entire preiod
-    #   has data used for training
-    # --------------------------------------------------
-
-    try:
-        model.load_weights(imodel)
-    except:
-        pass
-
-    dates_predict = np.array(dates_predict)
-    companies_predict = np.array(companies_predict)
-
-    inum_stocks = num_stocks
-    cumu_system = [10000.0]
-    cumu_BH = [10000.0]
-    plotdates = [dates_predict[0]]
-    _forecast_mean = []
-    _forecast_median = []
-    _forecast_stdev = []
-    for i, idate in enumerate(dates_predict[1:]):
-        if idate != dates[-1] and companies_predict[i] < companies_predict[i-1]:
-            # show predictions for (single) last date
-            _Xtrain = Xpredict[dates_predict == idate]
-            _dates = np.array(dates_predict[dates_predict == idate])
-            _companies = np.array(companies_predict[dates_predict == idate])
-            #print("forecast shape = ", model.predict(_Xtrain).shape)
-            _forecast = model.predict(_Xtrain)[:, 0]
-            _symbols = np.array(symbols_predict)
-
-            indices = _forecast.argsort()
-            sorted_forecast = _forecast[indices]
-            sorted_symbols = _symbols[indices]
-
-            try:
-                _Ytrain = Ypredict[dates_predict == idate]
-                sorted_Ytrain = _Ytrain[indices]
-                BH_gain = sorted_Ytrain.mean()
-            except:
-                BH_gain = 0.0
-
-            avg_gain = sorted_Ytrain[-inum_stocks:].mean()
-
-            _forecast_mean.append(_forecast.mean())
-            _forecast_median.append(np.median(_forecast))
-            _forecast_stdev.append(_forecast.std())
-
-            if verbose:
-                print(" ... date, system_gain, B&H_gain = ",
-                      idate,
-                      format(avg_gain, '3.1%'), format(BH_gain, '3.1%'),
-                      sorted_symbols[-inum_stocks:])
-            cumu_system.append(cumu_system[-1] * (1.+avg_gain))
-            cumu_BH.append(cumu_BH[-1] * (1.+BH_gain))
-            plotdates.append(idate)
-    print(" ... system, B&H = ", format(cumu_system[-1], '10,.0f'), format(cumu_BH[-1], '10,.0f'))
-
-    return cumu_system, cumu_BH, sorted_symbols, plotdates
-
-
-
-def ensemble_prediction(models_list, idate, datearray, adjClose, num_stocks, sort_mode='sharpe', verbose=False):
-    #--------------------------------------------------------------
-    # loop through best models and pick companies from ensemble prediction
-    #--------------------------------------------------------------
-
-    ensemble_symbols = []
-    ensemble_Ytrain = []
-    ensemble_sharpe = []
-    ensemble_recent_sharpe = []
-    ensemble_equal = []
-    ensemble_rank = []
-    for iii,imodel in enumerate(models_list):
-
-        # --------------------------------------------------
-        # build DL model
-        # --------------------------------------------------
-
-        config_filename = os.path.join(models_folder, imodel).replace('.hdf','.txt')
-        #print(" ... config_filename = ", config_filename)
-        print(".", end='')
-        model = build_model(config_filename, verbose=False)
-
-        # collect meta data for weighting ensemble_symbols
-        params = get_params(config_filename)
-        #num_stocks = params['num_stocks']
-        num_periods_history = params['num_periods_history']
-        increments = params['increments']
-
-        symbols_predict = symbols
-        Xpredict, Ypredict, dates_predict, companies_predict = generateExamples3layerForDate(idate,
-                                                                                             datearray,
-                                                                                             adjClose,
-                                                                                             num_periods_history,
-                                                                                             increments,
-                                                                                             output_incr='monthly',
-                                                                                             verbose=False)
-
-        dates_predict = np.array(dates_predict)
-        companies_predict = np.array(companies_predict)
-
-        # --------------------------------------------------
-        # make predictions monthly for backtesting
-        # - there might be some bias since entire preiod
-        #   has data used for training
-        # --------------------------------------------------
-
-        weights_filename = os.path.join(models_folder, imodel)
-        try:
-            model.load_weights(weights_filename)
-        except:
-            pass
-
-        # show predictions for (single) last date
-        _Xtrain = Xpredict[dates_predict == idate]
-        _Ytrain = Ypredict[dates_predict == idate][:,0]
-        _dates = np.array(dates_predict[dates_predict == idate])
-        _companies = np.array(companies_predict[dates_predict == idate])
-        _forecast = model.predict(_Xtrain)[:, 0]
-        _symbols = np.array(symbols_predict)[_companies]
-
-        del model
-        K.clear_session()
-
-        forecast_indices = _forecast.argsort()[-num_stocks:]
-        sorted_Xtrain = _Xtrain[forecast_indices,:,:,:]
-        sorted_Ytrain = _Ytrain[forecast_indices]
-        sorted_companies = _companies[forecast_indices]
-        sorted_forecast = _forecast[forecast_indices]
-        sorted_symbols = _symbols[forecast_indices]
-        ##print("\n ... sorted_symbols = ",sorted_symbols[-num_stocks:])
-
-#        ensemble_sharpe_weights = np.ones(np.array(sorted_symbols[-num_stocks:]).shape, 'float') * params['_sharpe_ratio_system']
-#        ensemble_recent_sharpe_weights = np.ones_like(ensemble_sharpe_weights) * params['_sharpe_ratio_recent_system']
-        ensemble_sharpe_weights = np.ones(sorted_companies.shape, 'float')
-        ensemble_recent_sharpe_weights = np.ones_like(ensemble_sharpe_weights)
-        #print("sorted_Xtrain.shape = ",sorted_Xtrain.shape, "   sorted_companies.shape = ", sorted_companies.shape)
-        for icompany in range(sorted_companies.shape[0]):
-            #print("sorted_Xtrain[icompany,:,2,0].shape, sharpe = ",sorted_Xtrain[icompany,:,2,0].shape,allstats((sorted_Xtrain[icompany,:,0,0]+1.).cumprod()).sharpe(periods_per_year=252./increments[2]))
-            if sort_mode == 'sharpe':
-                ensemble_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,-1,0]+1.).cumprod()).sharpe(periods_per_year=252./increments[-1])
-                ensemble_recent_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,int(sorted_Xtrain.shape[2]/2),0]+1.).cumprod()).sharpe(periods_per_year=252./increments[0])
-            elif sort_mode == 'sharpe_plus_sortino':
-                ensemble_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,-1,0]+1.).cumprod()).sharpe(periods_per_year=252./increments[-1]) + \
-                                                    allstats((sorted_Xtrain[icompany,:,-1,0]+1.).cumprod()).sortino()
-                ensemble_recent_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,int(sorted_Xtrain.shape[2]/2),0]+1.).cumprod()).sharpe(periods_per_year=252./increments[0]) + \
-                                                           allstats((sorted_Xtrain[icompany,:,int(sorted_Xtrain.shape[2]/2),0]+1.).cumprod()).sortino()
-            elif sort_mode == 'sortino':
-                ensemble_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,-1,0]+1.).cumprod()).sortino()
-                ensemble_recent_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,int(sorted_Xtrain.shape[2]/2),0]+1.).cumprod()).sortino()
-            elif sort_mode == 'count' or sort_mode == 'equal':
-                ensemble_sharpe_weights[icompany] = 1.
-                ensemble_recent_sharpe_weights[icompany] = 1.
-
-        ensemble_equal_weights = np.ones_like(ensemble_sharpe_weights)
-        ensemble_rank_weights = np.arange(np.array(sorted_symbols[-num_stocks:]).shape[0])[::-1]
-
-        ensemble_symbols.append(sorted_symbols[-num_stocks:])
-        ensemble_Ytrain.append(sorted_Ytrain[-num_stocks:])
-        ensemble_sharpe.append(ensemble_sharpe_weights)
-        ensemble_recent_sharpe.append(ensemble_recent_sharpe_weights)
-        ensemble_equal.append(ensemble_recent_sharpe_weights)
-        ensemble_rank.append(ensemble_rank_weights)
-
-        #print(imodel,sorted_symbols[-num_stocks:])
-        #print(" ... ",ensemble_sharpe_weights)
-
-    # sift through ensemble symbols
-    ensemble_symbols = np.array(ensemble_symbols).flatten()
-    ensemble_Ytrain = np.array(ensemble_Ytrain).flatten()
-    ensemble_sharpe = np.array(ensemble_sharpe).flatten()
-    ensemble_recent_sharpe = np.array(ensemble_recent_sharpe).flatten()
-    ensemble_equal = np.array(ensemble_equal).flatten()
-    ensemble_rank = np.array(ensemble_rank).flatten()
-
-    #unique_symbols = list(set(np.array(ensemble_symbols)))
-    unique_symbols = list(set(list(np.array(ensemble_symbols).flatten())))
-    unique_ensemble_symbols = []
-    unique_ensemble_Ytrain = []
-    unique_ensemble_sharpe = []
-    unique_ensemble_recent_sharpe = []
-    unique_ensemble_equal = []
-    unique_ensemble_rank = []
-    for k, ksymbol in enumerate(unique_symbols):
-        unique_ensemble_symbols.append(np.array(ensemble_symbols)[ensemble_symbols == ksymbol][0])
-        unique_ensemble_Ytrain.append(ensemble_Ytrain[ensemble_symbols == ksymbol].mean())
-        unique_ensemble_sharpe.append(ensemble_sharpe[ensemble_symbols == ksymbol].sum())
-        unique_ensemble_recent_sharpe.append(ensemble_recent_sharpe[ensemble_symbols == ksymbol].sum())
-        unique_ensemble_equal.append(ensemble_equal[ensemble_symbols == ksymbol].sum())
-        unique_ensemble_rank.append(ensemble_rank[ensemble_symbols == ksymbol].sum())
-
-    #print("unique_ensemble_sharpe = ", np.sort(unique_ensemble_sharpe)[-num_stocks:])
-
-    indices_recent = np.argsort(unique_ensemble_recent_sharpe)[-num_stocks:]
-    #print("indices = ",indices)
-    sorted_recent_sharpe = np.array(unique_ensemble_recent_sharpe)[indices_recent]
-    sorted_recent_sharpe = np.array(sorted_recent_sharpe)
-
-    unique_ensemble_sharpe = np.array(unique_ensemble_sharpe) + np.array(unique_ensemble_recent_sharpe)
-    if sort_mode == 'equal':
-        unique_ensemble_sharpe = np.ones_like(unique_ensemble_sharpe)
-
-    indices = np.argsort(unique_ensemble_sharpe)[-num_stocks:]
-    #print("indices = ",indices)
-    sorted_sharpe = np.array(unique_ensemble_sharpe)[indices]
-    ##sorted_sharpe = np.array(sorted_sharpe)
-    #print("                                       ... sorted_sharpe[sorted_sharpe < 0.].shape = ", sorted_sharpe[sorted_sharpe < 0.].shape, sorted_recent_sharpe[sorted_recent_sharpe < 0.].shape)
-    sorted_symbols = np.array(unique_ensemble_symbols)[indices]
-    sorted_Ytrain = np.array(unique_ensemble_Ytrain)[indices]
-    #company_indices = [list(unique_ensemble_symbols).index(isymbol) for isymbol in sorted_symbols]
-
-    ##print("sorted_symbols = ", sorted_symbols)
-    ##print("sorted_Ytrain = ", sorted_Ytrain)
-    #print("_symbols[company_indices] = ", _symbols[company_indices][-num_stocks:])
-    #print("_Ytrain[company_indices] = ", _Ytrain[company_indices][-num_stocks:])
-
-    """
-    # equal-weighted
-    try:
-        _Ytrain = _Ytrain[dates_predict == idate]
-        sorted_Ytrain = sorted_Ytrain[-num_stocks:]
-        BH_gain = _Ytrain.mean()
-    except:
-        BH_gain = 0.0
-
-    avg_gain = sorted_Ytrain.mean()
-
-    return avg_gain, BH_gain, sorted_symbols
-    """
-
-    # weighted contribution according to sharpe ratio
-    try:
-        _Ytrain = _Ytrain[dates_predict == idate]
-        sorted_Ytrain = sorted_Ytrain[-num_stocks:]
-        sorted_sharpe = sorted_sharpe[-num_stocks:]
-        BH_gain = _Ytrain.mean()
-    except:
-        BH_gain = 0.0
-
-    ####sorted_sharpe = 1./ sorted_sharpe
-    sorted_sharpe = np.sqrt(np.clip(sorted_sharpe,0.,sorted_sharpe.max()))
-    if verbose:
-        print("       gains, stddev of gains = ", np.around(sorted_Ytrain,3),np.std(sorted_Ytrain))
-        print("       sorted_sharpe", np.around(sorted_sharpe,2), np.std(sorted_sharpe))
-        print("       weights", np.around(sorted_sharpe/ sorted_sharpe.sum(),3), np.std(sorted_sharpe/ sorted_sharpe.sum()))
-        print("       weighted gains", np.around((sorted_Ytrain * sorted_sharpe) / sorted_sharpe.sum(),3))
-    avg_gain = ((sorted_Ytrain * sorted_sharpe) / sorted_sharpe.sum()).sum()
-    symbols_weights = sorted_sharpe / sorted_sharpe.sum()
-
-    return avg_gain, BH_gain, sorted_symbols, symbols_weights
+persistence_hdf = os.path.join(_cwd,'pngs','best_performers4','persistence_data_full_v2.hdf')
+_performance_folder, persistence_hdf_fn = os.path.split(persistence_hdf)
+_persistence_filename_prefix = os.path.split(persistence_hdf_fn)
 
 # --------------------------------------------------
 # Import list of symbols to process.
@@ -523,9 +182,11 @@ print(" ... model_filter = ", model_filter)
 
 first_pass = True
 num_stocks_list = [5,6,7,8,9]
-num_stocks_list = [2,3,4,5,6,7,8,9]
+num_stocks_list = [2,3,4,5,6,7,8,9] # this should be used except for special cases
 num_stocks_list = [3,5,7,9]
-sort_mode_list = ['sortino', 'sharpe', 'count', 'equal']
+num_stocks_list = [10]
+sort_mode_list = ['sortino', 'sharpe', 'count', 'equal'] # this should be used except for special cases
+#sort_mode_list = ['sortino', 'count']
 for inum_stocks in num_stocks_list:
 
     print(" ... inum_stocks = ", inum_stocks)
@@ -578,46 +239,85 @@ for inum_stocks in num_stocks_list:
         recent_comparative_method = ['cash']
         for sort_mode in sort_mode_list:
 
-            if sort_mode == sort_mode_list[0]:
-                print("")
-
-            avg_gain, BH_gain, sorted_symbols, symbols_weights = ensemble_prediction(models_list, idate, datearray, adjClose, inum_stocks, sort_mode=sort_mode)
-
-            if symbols_weights[np.isnan(symbols_weights)].shape[0] > 0 or inum_stocks==0:
-                avg_gain = 0.
-                symbols_weights = np.ones(symbols_weights.shape, 'float')
-
             if first_pass:
-                # set up pandas dataframe to hold results
-                '''
-                datarow = [ ['dates',idate], ['sort_modes', sort_mode],
-                         ['number_stocks', inum_stocks], ['gains', avg_gain],
-                         ['symbols', [sorted_symbols]], ['weights', [symbols_weights]] ]
-                '''
-                df = pandas.DataFrame(columns=['dates', 'sort_modes', 'number_stocks', 'gains', 'symbols', 'weights', 'cumu_value'])
-                for iinum_stocks in num_stocks_list:
-                    for isort_mode in sort_mode_list:
-                        datarow = [ datearray[first_history_index], isort_mode, iinum_stocks, 0., [], [], 10000.]
-                        df.loc[len(df)] = datarow
-                datarow = [ idate, sort_mode, inum_stocks, avg_gain, sorted_symbols, symbols_weights, np.isnan]
-                df.loc[len(df)] = datarow
-                smode = df.values[-1,1]
-                nstocks = df.values[-1,2]
-                indices = df.loc[np.logical_and(df['sort_modes']==smode,df['number_stocks']==nstocks)]['gains'].index
-                method_cumu_gains = 10000.*(df.values[indices,-4]+1.).cumprod()
-                df.loc[len(df)-1,'cumu_value'] = method_cumu_gains[-1]
+                # try to open existing dataframe. Create new one if unsuccessful.
+                try:
+                    df = pandas.HDFStore(persistence_hdf).select('table')
+                except:
+                    # set up pandas dataframe to hold results
+                    df = pandas.DataFrame(columns=['dates', 'sort_modes', 'number_stocks', 'gains', 'symbols', 'weights', 'cumu_value'])
                 first_pass = False
-            else:
+
+            # compute only if (inum_stocks, date, sort_mode) don't already exists in dataframe
+            test_subset = df.loc[df['number_stocks'].isin([inum_stocks]) & df['dates'].isin([idate]) & df['sort_modes'].isin([sort_mode])]
+
+            if test_subset.size == 0:
+
+                if sort_mode == sort_mode_list[0]:
+                    print("")
+
+                avg_gain, BH_gain, sorted_symbols, symbols_weights = ensemble_prediction(models_list, idate, datearray, adjClose, inum_stocks, sort_mode=sort_mode)
+
+                if symbols_weights[np.isnan(symbols_weights)].shape[0] > 0 or inum_stocks==0:
+                    avg_gain = 0.
+                    symbols_weights = np.ones(symbols_weights.shape, 'float')
+
+                """
+                if first_pass:
+                    # try to open existing dataframe. Create new one if unsuccessful.
+                    try:
+                        df = pandas.HDFStore(persistence_hdf).select('table')
+                    except:
+                        # set up pandas dataframe to hold results
+                        df = pandas.DataFrame(columns=['dates', 'sort_modes', 'number_stocks', 'gains', 'symbols', 'weights', 'cumu_value'])
+                    for iinum_stocks in num_stocks_list:
+                        for isort_mode in sort_mode_list:
+                            datarow = [ datearray[first_history_index], isort_mode, iinum_stocks, 0., [], [], 10000.]
+                            df.loc[len(df)] = datarow
+                    datarow = [ idate, sort_mode, inum_stocks, avg_gain, sorted_symbols, symbols_weights, np.isnan]
+                    df.loc[len(df)] = datarow
+                    smode = df.values[-1,1]
+                    nstocks = df.values[-1,2]
+                    indices = df.loc[np.logical_and(df['sort_modes']==smode,df['number_stocks']==nstocks)]['gains'].index
+                    method_cumu_gains = 10000.*(df.values[indices,-4]+1.).cumprod()
+                    df.loc[len(df)-1,'cumu_value'] = method_cumu_gains[-1]
+                    first_pass = False
+                else:
+                    datarow = [ idate, sort_mode,
+                             inum_stocks, avg_gain,
+                             sorted_symbols, symbols_weights, np.isnan]
+                    df.loc[len(df)] = datarow
+                    smode = df.values[-1,1]
+                    nstocks = df.values[-1,2]
+                    indices = df.loc[np.logical_and(df['sort_modes']==smode,df['number_stocks']==nstocks)]['gains'].index
+                    method_cumu_gains = 10000.*(df.values[indices,-4]+1.).cumprod()
+                    df.loc[len(df)-1,'cumu_value'] = method_cumu_gains[-1]
+                """
+
+                # write info to last row in ensemble model persistence dataframe
                 datarow = [ idate, sort_mode,
                          inum_stocks, avg_gain,
                          sorted_symbols, symbols_weights, np.isnan]
                 df.loc[len(df)] = datarow
+
                 smode = df.values[-1,1]
                 nstocks = df.values[-1,2]
                 indices = df.loc[np.logical_and(df['sort_modes']==smode,df['number_stocks']==nstocks)]['gains'].index
                 method_cumu_gains = 10000.*(df.values[indices,-4]+1.).cumprod()
                 df.loc[len(df)-1,'cumu_value'] = method_cumu_gains[-1]
 
+            else:
+                print('    ... use existing datarow ',(inum_stocks, sort_mode, idate))
+                datarow = test_subset
+                #print('    ... datarow = ',datarow)
+                smode = datarow['sort_modes'].values[0]
+                nstocks = datarow['number_stocks'].values[0]
+                avg_gain = datarow['gains'].values[0]
+                indices = df.loc[np.logical_and(df['sort_modes']==smode,df['number_stocks']==nstocks)]['gains'].index
+                method_cumu_gains = 10000.*(df.values[indices,-4]+1.).cumprod()
+
+
+            print(" ... avg_gain = ", avg_gain, " BH_gain = ", BH_gain)
             cumu_system.append(cumu_system[-1] * (1.+avg_gain))
             recent_comparative_month_gain.append(1.+avg_gain)
             if sort_mode == sort_mode_list[0]:
@@ -657,6 +357,8 @@ for inum_stocks in num_stocks_list:
                 print("        ... dynamic system = ",
                       recent_comparative_method[best_comparative_index], format(cumu_dynamic_system[-1], '10,.0f'),
                       recent_comparative_method[worst_comparative_index], format(cumu_dynamic_reversion_system[-1], '10,.0f'))
+
+
 
 
     print(" ...system, B&H = ", format(cumu_system[-1], '10,.0f'), format(cumu_BH[-1], '10,.0f'))
