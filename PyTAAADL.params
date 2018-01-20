@@ -1,0 +1,40 @@
+[Email]
+From: userid@isp.com
+To:   userid2@isp2.com
+PW:   password
+IPaddress:  43.4322.4324.543234
+
+[Text_from_email]
+phoneEmail:   5555555555@tmomail.net
+
+[FTP]
+hostname: webhost
+remoteIP: 192.168.1.1000
+username: webusername
+password: webuserpassword
+remotepath: /var/www/mysite/pyTAAADL_web/
+
+[Setup]
+runtime: 15 days
+pausetime: 12 hours
+
+[Valuation]
+# for 0_train_many_DL_models
+best_trained_models_folder:         best_performers5
+stockList:                          SP_wo_Naz
+stockList_predict:                  Naz100
+first_history_index:                1500
+num_stocks:                         7
+num_periods_history:                20
+shortest_incr_range:                1,3,5
+longest_incr_range:                 5,9,13
+feature_map_factor_range:           8,23,38
+
+# for 1_choose_best_performing_trained_models
+model_filter:                       SP
+sort_mode:                          sharpe
+months_for_performance_comparison:  6
+folder_for_best_performers:         best_performers5
+final_system_value_threshold:       70000000
+sharpe_threshold_percentile:        85
+sortino_threshold_percentile:       85
