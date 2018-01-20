@@ -41,20 +41,25 @@ from functions.TAfunctions import _is_odd, \
                                   one_model_prediction, \
                                   ensemble_prediction
 
+from functions.GetParams import GetParams
+
 from functions.UpdateSymbols_inHDF5 import UpdateHDF5, \
                                            loadQuotes_fromHDF
-
-from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 
 os.chdir(_cwd)
 
+# --------------------------------------------------
+# Get program parameters.
+# --------------------------------------------------
+
+run_params = GetParams()
 
 # --------------------------------------------------
 # set filename for datafram containing model persistence input data.
 # --------------------------------------------------
 
-persistence_hdf = os.path.join(_cwd,'pngs','best_performers4','persistence_data_full_v2.hdf')
+persistence_hdf = os.path.join(_cwd,'pngs',run_params['folder_for_best_performers'],'persistence_data_full_v2.hdf')
 _performance_folder, persistence_hdf_fn = os.path.split(persistence_hdf)
 _persistence_filename_prefix = os.path.split(persistence_hdf_fn)
 
@@ -63,7 +68,8 @@ _persistence_filename_prefix = os.path.split(persistence_hdf_fn)
 # --------------------------------------------------
 
 # read list of symbols from disk.
-stockList = 'Naz100'
+#stockList = 'Naz100'
+stockList = run_params['stockList_predict']
 filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
 
 # --------------------------------------------------
@@ -160,12 +166,14 @@ recent_performance = {}
 #for model_filter in ['SP']:
 #for sort_mode in ['sortino', 'sharpe']:
 
-models_folder = os.path.join(os.getcwd(), 'pngs', 'best_performers4')
+models_folder = os.path.join(os.getcwd(), 'pngs', run_params['folder_for_best_performers'])
 models_list = os.listdir(models_folder)
 models_list = [i for i in models_list if '.txt' in i]
 models_list = [i for i in models_list if 'bak' not in i]
 
-model_filter = 'SP'
+# 'model_filter' indicates the stocks used to train the DL models
+#model_filter = 'SP'
+model_filter = run_params['model_filter']
 
 if model_filter == 'Naz100':
     models_list = [i for i in models_list if 'Naz100' in i]
@@ -181,12 +189,21 @@ print("\n\n****************************\n")
 print(" ... model_filter = ", model_filter)
 
 first_pass = True
+'''
 num_stocks_list = [5,6,7,8,9]
 num_stocks_list = [2,3,4,5,6,7,8,9] # this should be used except for special cases
 num_stocks_list = [3,5,7,9]
 num_stocks_list = [10]
 sort_mode_list = ['sortino', 'sharpe', 'count', 'equal'] # this should be used except for special cases
 #sort_mode_list = ['sortino', 'count']
+'''
+# the following list should be used for 'num_stocks_list' and 'sort_mode_list',
+# except in special cases
+#  - [3,5,7,9]
+#  - ['sortino', 'sharpe', 'count', 'equal']
+num_stocks_list = run_params['num_stocks_list']
+sort_mode_list = run_params['sort_mode_list']
+
 for inum_stocks in num_stocks_list:
 
     print(" ... inum_stocks = ", inum_stocks)
@@ -256,7 +273,14 @@ for inum_stocks in num_stocks_list:
                 if sort_mode == sort_mode_list[0]:
                     print("")
 
-                avg_gain, BH_gain, sorted_symbols, symbols_weights = ensemble_prediction(models_list, idate, datearray, adjClose, inum_stocks, sort_mode=sort_mode)
+                avg_gain, BH_gain, sorted_symbols, symbols_weights = ensemble_prediction(models_folder,
+                                                                                         models_list,
+                                                                                         idate,
+                                                                                         datearray,
+                                                                                         adjClose,
+                                                                                         symbols,
+                                                                                         inum_stocks,
+                                                                                         sort_mode=sort_mode)
 
                 if symbols_weights[np.isnan(symbols_weights)].shape[0] > 0 or inum_stocks==0:
                     avg_gain = 0.
