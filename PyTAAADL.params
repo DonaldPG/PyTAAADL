@@ -38,3 +38,7 @@ folder_for_best_performers:         best_performers5
 final_system_value_threshold:       70000000
 sharpe_threshold_percentile:        85
 sortino_threshold_percentile:       85
+
+# for 2_choose_best_performing_trained_models
+num_stocks_list:                    3,5,7,9
+sort_mode_list:                     sortino,sharpe,count,equal
