@@ -12,18 +12,9 @@ Created on Sat Dec  2 12:50:40 2017
 import os
 import datetime
 import numpy as np
-import configparser
 
 from keras import backend as K
 from keras.models import model_from_json
-from keras.models import Sequential
-from keras.layers import Conv2D
-from keras.layers import Activation
-from keras.layers import LeakyReLU
-from keras.layers import MaxPooling2D
-from keras.layers import Dropout
-from keras.layers import Dense
-from keras.layers.normalization import BatchNormalization
 from keras.optimizers import RMSprop, Adam, Adagrad, Nadam
 
 from matplotlib import pyplot as plt
@@ -32,19 +23,9 @@ from matplotlib import pyplot as plt
 _cwd = os.getcwd()
 os.chdir(os.path.join(os.getcwd()))
 _data_path = os.getcwd()
-'''
-from functions.quotes_for_list_adjClose import get_Naz100List, \
-                                               arrayFromQuotesForList
-'''
 from functions.allstats import allstats
-from functions.TAfunctions import _is_odd, \
-                                  generateExamples, \
-                                  generatePredictionInput, \
-                                  generateExamples3layer, \
-                                  generateExamples3layerGen, \
+from functions.TAfunctions import generateExamples3layerGen, \
                                   generateExamples3layerForDate, \
-                                  generatePredictionInput3layer, \
-                                  fix_params_file, \
                                   get_params, \
                                   interpolate, \
                                   cleantobeginning, \
@@ -54,119 +35,6 @@ from functions.UpdateSymbols_inHDF5 import UpdateHDF5, \
                                            loadQuotes_fromHDF
 os.chdir(_cwd)
 
-"""
-def fix_params_file(config_filename, verbose=False):
-
-    current_folder = os.getcwd()
-
-    fn_path, fn = os.path.split(config_filename)
-
-    os.chdir(fn_path)
-    config_filename_bak = fn.replace(".txt",".bak.txt")
-
-    if os.path.isfile(config_filename_bak):
-        return
-
-    import shutil
-    #print("config_filename = ", fn)
-    #print("backed-up config_filename_bak = ", config_filename_bak)
-    shutil.copy(fn, config_filename_bak)
-
-    with open(config_filename_bak,'r') as f:
-        text = f.read()
-        text_list = text.split("\n")
-        previous_labels = []
-        edited_text_list = []
-        for i, line in enumerate(text_list):
-            label = line.split(":")[0]
-            if label not in previous_labels:
-                edited_text_list.append(line+"\n")
-            previous_labels.append(label)
-
-    with open(fn,'w') as f:
-        for text in edited_text_list:
-            f.write(text)
-
-    os.chdir(current_folder)
-    if verbose:
-        print("    ... params file successfully processed for duplicate keys")
-
-    return
-
-
-def get_params(config_filename):
-
-    # --------------------------------------------------
-    # Input parameters
-    # --------------------------------------------------
-
-    fix_params_file(config_filename)
-
-    parser = configparser.ConfigParser()
-    #configfile = open(config_filename, "r")
-    parser.read(config_filename)
-
-    try:
-        perform_batch_normalization = parser.get("training_params", "perform_batch_normalization")
-    except:
-        perform_batch_normalization = True
-
-    try:
-        use_dense_layers = parser.get("training_params", "use_dense_layers")
-    except:
-        use_dense_layers = False
-
-    try:
-        feature_map_factor = parser.get("training_params", "feature_map_factor")
-    except:
-        feature_map_factor = 1
-
-    try:
-        loss_function = parser.get("training_params", "loss function")
-    except:
-        loss_function = 'mse'
-
-    try:
-        optimizer_choice = parser.get("training_params", "optimizer_choice")
-    except:
-        optimizer_choice = 'RMSprop'
-
-    use_leaky_relu = parser.get("training_params", "use_leaky_relu")
-    leaky_relu_alpha = parser.get("training_params", "leaky_relu_alpha")
-
-    num_stocks = parser.get("training_params", "num_stocks")
-    increments = parser.get("training_params", "increments")
-    num_periods_history = parser.get("training_params", "num_periods_history")
-    first_history_index = parser.get("training_params", "first_history_index")
-    _sharpe_ratio_system = parser.get("training_params", "_sharpe_ratio_system")
-    _sharpe_ratio_recent_system = parser.get("training_params", "_sharpe_ratio_recent_system")
-
-    weights_filename = parser.get("training_params", "weights_filename")
-    model_json_filename = parser.get("training_params", "model_json_filename")
-
-    # put params in a dictionary
-    params = {}
-    params['perform_batch_normalization'] = perform_batch_normalization
-    params['use_dense_layers'] = use_dense_layers
-    params['use_leaky_relu'] = use_leaky_relu
-    params['leaky_relu_alpha'] = float(leaky_relu_alpha)
-
-    params['feature_map_factor'] = int(feature_map_factor)
-    params['optimizer_choice'] = optimizer_choice
-    params['loss_function'] = loss_function
-    params['num_stocks'] = int(num_stocks)
-    _increments = increments.replace(" ",",").replace("[,","[").replace(",,",",")
-    params['increments'] = eval(_increments)
-    params['num_periods_history'] = int(num_periods_history)
-    params['first_history_index'] = int(first_history_index)
-    params['_sharpe_ratio_system'] = float(_sharpe_ratio_system)
-    params['_sharpe_ratio_recent_system'] = float(_sharpe_ratio_recent_system)
-
-    params['weights_filename'] = weights_filename
-    params['model_json_filename'] = model_json_filename
-
-    return params
-"""
 
 def get_predictions_input(config_filename, adjClose, datearray):
 
@@ -335,26 +203,18 @@ def ensemble_prediction(models_list, idate, datearray, adjClose, num_stocks, sor
         # --------------------------------------------------
 
         config_filename = os.path.join(models_folder, imodel).replace('.hdf','.txt')
-        #print(" ... config_filename = ", config_filename)
         print(".", end='')
         model = build_model(config_filename, verbose=False)
 
         # collect meta data for weighting ensemble_symbols
         params = get_params(config_filename)
 
-        #num_stocks = params['num_stocks']
         num_periods_history = params['num_periods_history']
         increments = params['increments']
 
         symbols_predict = symbols
         Xpredict, Ypredict, dates_predict, companies_predict = generateExamples3layerForDate(idate,
                                                                                              datearray,
-                                                                                             adjClose,
-                                                                                             num_periods_history,
-                                                                                             increments,
-                                                                                             output_incr='monthly',
-                                                                                             verbose=False)
-
         dates_predict = np.array(dates_predict)
         companies_predict = np.array(companies_predict)
 
@@ -387,15 +247,9 @@ def ensemble_prediction(models_list, idate, datearray, adjClose, num_stocks, sor
         sorted_companies = _companies[forecast_indices]
         sorted_forecast = _forecast[forecast_indices]
         sorted_symbols = _symbols[forecast_indices]
-        ##print("\n ... sorted_symbols = ",sorted_symbols[-num_stocks:])
-
-#        ensemble_sharpe_weights = np.ones(np.array(sorted_symbols[-num_stocks:]).shape, 'float') * params['_sharpe_ratio_system']
-#        ensemble_recent_sharpe_weights = np.ones_like(ensemble_sharpe_weights) * params['_sharpe_ratio_recent_system']
         ensemble_sharpe_weights = np.ones(sorted_companies.shape, 'float')
         ensemble_recent_sharpe_weights = np.ones_like(ensemble_sharpe_weights)
-        #print("sorted_Xtrain.shape = ",sorted_Xtrain.shape, "   sorted_companies.shape = ", sorted_companies.shape)
         for icompany in range(sorted_companies.shape[0]):
-            #print("sorted_Xtrain[icompany,:,2,0].shape, sharpe = ",sorted_Xtrain[icompany,:,2,0].shape,allstats((sorted_Xtrain[icompany,:,0,0]+1.).cumprod()).sharpe(periods_per_year=252./increments[2]))
             if sort_mode == 'sharpe':
                 ensemble_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,-1,0]+1.).cumprod()).sharpe(periods_per_year=252./increments[-1])
                 ensemble_recent_sharpe_weights[icompany] = allstats((sorted_Xtrain[icompany,:,int(sorted_Xtrain.shape[2]/2),0]+1.).cumprod()).sharpe(periods_per_year=252./increments[0])
@@ -417,9 +271,6 @@ def ensemble_prediction(models_list, idate, datearray, adjClose, num_stocks, sor
         ensemble_equal.append(ensemble_recent_sharpe_weights)
         ensemble_rank.append(ensemble_rank_weights)
 
-        #print(imodel,sorted_symbols[-num_stocks:])
-        #print(" ... ",ensemble_sharpe_weights)
-
     # sift through ensemble symbols
     ensemble_symbols = np.array(ensemble_symbols).flatten()
     ensemble_Ytrain = np.array(ensemble_Ytrain).flatten()
@@ -428,7 +279,6 @@ def ensemble_prediction(models_list, idate, datearray, adjClose, num_stocks, sor
     ensemble_equal = np.array(ensemble_equal).flatten()
     ensemble_rank = np.array(ensemble_rank).flatten()
 
-    #unique_symbols = list(set(np.array(ensemble_symbols)))
     unique_symbols = list(set(list(np.array(ensemble_symbols).flatten())))
     unique_ensemble_symbols = []
     unique_ensemble_Ytrain = []
@@ -444,28 +294,17 @@ def ensemble_prediction(models_list, idate, datearray, adjClose, num_stocks, sor
         unique_ensemble_equal.append(ensemble_equal[ensemble_symbols == ksymbol].sum())
         unique_ensemble_rank.append(ensemble_rank[ensemble_symbols == ksymbol].sum())
 
-    #print("unique_ensemble_sharpe = ", np.sort(unique_ensemble_sharpe)[-num_stocks:])
-
     indices_recent = np.argsort(unique_ensemble_recent_sharpe)[-num_stocks:]
-    #print("indices = ",indices)
     sorted_recent_sharpe = np.array(unique_ensemble_recent_sharpe)[indices_recent]
     sorted_recent_sharpe = np.array(sorted_recent_sharpe)
 
     unique_ensemble_sharpe = np.array(unique_ensemble_sharpe) + np.array(unique_ensemble_recent_sharpe)
 
     indices = np.argsort(unique_ensemble_sharpe)[-num_stocks:]
-    #print("indices = ",indices)
     sorted_sharpe = np.array(unique_ensemble_sharpe)[indices]
     sorted_sharpe = np.array(sorted_sharpe)
-    #print("                                       ... sorted_sharpe[sorted_sharpe < 0.].shape = ", sorted_sharpe[sorted_sharpe < 0.].shape, sorted_recent_sharpe[sorted_recent_sharpe < 0.].shape)
     sorted_symbols = np.array(unique_ensemble_symbols)[indices]
     sorted_Ytrain = np.array(unique_ensemble_Ytrain)[indices]
-    #company_indices = [list(unique_ensemble_symbols).index(isymbol) for isymbol in sorted_symbols]
-
-    ##print("sorted_symbols = ", sorted_symbols)
-    ##print("sorted_Ytrain = ", sorted_Ytrain)
-    #print("_symbols[company_indices] = ", _symbols[company_indices][-num_stocks:])
-    #print("_Ytrain[company_indices] = ", _Ytrain[company_indices][-num_stocks:])
 
     try:
         _Ytrain = _Ytrain[dates_predict == idate]
@@ -484,19 +323,14 @@ def performance_metric(models_plotdates, avg_gain, sort_mode='sharpe', number_mo
     model_metric = []
     model_dates = []
     for ii in range(number_months,len(avg_gain)):
-        #if models_plotdates[ii].month == 1:
         if models_plotdates[ii].month <= 12:
             performance_history = np.array(avg_gain[ii-number_months:ii])
             if sort_mode == 'sharpe':
                 computed_stats = allstats(performance_history).sharpe(periods_per_year=12.)
-                #print(ii,models_plotdates[ii],computed_stats)
             elif sort_mode == 'sortino':
                 computed_stats = (allstats(performance_history).sortino())
             elif sort_mode == 'sharpe_plus_sortino':
                 computed_stats = allstats(performance_history).sharpe(periods_per_year=12.) + allstats(performance_history).sortino()
-            '''if computed_stats != empty_list:
-                model_dates.append(models_plotdates[ii])
-                model_metric.append(computed_stats)'''
             model_dates.append(models_plotdates[ii])
             if np.isinf(computed_stats):
                 computed_stats = -1.
@@ -512,13 +346,11 @@ def performance_metric(models_plotdates, avg_gain, sort_mode='sharpe', number_mo
 
 run_params = GetParams()
 
-
 # --------------------------------------------------
 # Import list of symbols to process.
 # --------------------------------------------------
 
 # read list of symbols from disk.
-#stockList = 'Naz100'
 stockList = run_params['stockList_predict']
 if stockList == 'Naz100':
     filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
@@ -567,8 +399,6 @@ print(" security values check: ", adjClose[np.isnan(adjClose)].shape)
 
 best_final_value = -99999
 best_recent_final_value = -99999
-#num_periods_history = 20
-#first_history_index = 1500
 num_periods_history = run_params['num_periods_history']
 first_history_index = run_params['first_history_index']
 
@@ -612,7 +442,6 @@ datearray_new_months.sort()
 # --------------------------------------------------
 
 #for model_filter in ['SP', 'Naz100', 'all']:
-#model_filter = 'SP'
 model_filter = run_params['model_filter']
 
 models_folder = os.path.join(os.getcwd(), 'pngs')
@@ -625,16 +454,13 @@ if model_filter == 'Naz100':
 if model_filter == 'SP':
     models_list = [i for i in models_list if 'SP' in i]
 
-#sort_mode = 'sharpe'
-#sort_mode = 'sortino'
-#sort_mode = 'sharpe_plus_sortino'
+# choices for sort_mode = 'sharpe', 'sortino', 'sharpe_plus_sortino'
 sort_mode = run_params['sort_mode']
 
 print("\n\n****************************\n")
 print(" ... model_filter = ", model_filter)
 print(" ... sort_mode = ", sort_mode)
 
-#inum_stocks = 7
 inum_stocks = run_params['num_stocks']
 print(" ... inum_stocks = ", inum_stocks)
 
@@ -710,8 +536,6 @@ for i_num_months in [months_for_performance_comparison]:
         if system_final_values[i] > run_params['final_system_value_threshold']:
             sharpe_shortlist.append(sharpe_list[i])
             sortino_shortlist.append(sortino_list[i])
-   # sharpe_threshold = np.median(sharpe_shortlist)
-   # sortino_threshold = np.median(sortino_shortlist)
     sharpe_shortlist = np.array(sharpe_shortlist)
     sortino_shortlist = np.array(sortino_shortlist)
     sharpe_threshold = np.percentile(sharpe_shortlist, run_params['sharpe_threshold_percentile'])
@@ -731,27 +555,6 @@ for i_num_months in [months_for_performance_comparison]:
               format(model_count_sharpe[-1],'>4d'),
               format(model_count_sortino[-1],'>4d'))
         import shutil
-        '''
-        if model_count_sharpe[-1] > 0 and system_final_values[i] > 10000000.:
-            shutil.copy2(imodel, 'best_sharpe2')
-            shutil.copy2(imodel.replace('txt', 'hdf'), 'best_sharpe2')
-            shutil.copy2(imodel.replace('txt', 'json'), 'best_sharpe2')
-            shutil.copy2(imodel.replace('.txt', '_fig-2.png'), 'best_sharpe2')
-            shutil.copy2(imodel.replace('.txt', '_fig-3.png'), 'best_sharpe2')
-            shutil.copy2(imodel.replace('.txt', '_fig-4.png'), 'best_sharpe2')
-            shutil.copy2(imodel.replace('.txt', '_crossplot.png'), 'best_sharpe2')
-        if model_count_sortino[-1] > 0  and system_final_values[i] > 10000000.:
-            shutil.copy2(imodel, 'best_sortino2')
-            shutil.copy2(imodel.replace('txt', 'hdf'), 'best_sortino2')
-            shutil.copy2(imodel.replace('txt', 'json'), 'best_sortino2')
-            shutil.copy2(imodel.replace('.txt', '_fig-2.png'), 'best_sortino2')
-            shutil.copy2(imodel.replace('.txt', '_fig-3.png'), 'best_sortino2')
-            shutil.copy2(imodel.replace('.txt', '_fig-4.png'), 'best_sortino2')
-            shutil.copy2(imodel.replace('.txt', '_crossplot.png'), 'best_sortino2')
-        if (model_count_sharpe[-1] == 0 and model_count_sortino[-1] == 0) or system_final_values[i] < 10000000.:
-            useless_models.append(imodel)
-        '''
-        #if system_final_values[i] > run_params['final_system_value_threshold'].:
         if system_final_values[i] > run_params['final_system_value_threshold'] and (sharpe_list[i] > sharpe_threshold or sortino_list[i] > sortino_threshold):
             shutil.copy2(imodel, run_params['folder_for_best_performers'])
             shutil.copy2(imodel.replace('txt', 'hdf'), run_params['folder_for_best_performers'])
@@ -772,6 +575,3 @@ for i_num_months in [months_for_performance_comparison]:
 
     print("\n ... best sharpe indices = ", best_sharpe_indices)
     print(" ... best sortino indices = ", best_sortino_indices)
-
-
-

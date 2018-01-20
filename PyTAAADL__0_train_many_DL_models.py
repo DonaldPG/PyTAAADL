@@ -31,24 +31,13 @@ from keras.optimizers import RMSprop, Adam, Adagrad, Nadam
 from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
 
-#import pandas as pd
-#from matplotlib import pylab as plt
-#plt.ion()
-
 ## local imports
 _cwd = os.getcwd()
 os.chdir(os.path.join(os.getcwd()))
 _data_path = os.getcwd()
-'''
-from functions.quotes_for_list_adjClose import get_Naz100List, \
-                                               arrayFromQuotesForList
-'''
+
 from functions.allstats import allstats
-from functions.TAfunctions import _is_odd, \
-                                  generateExamples, \
-                                  generatePredictionInput, \
-                                  generateExamples3layer, \
-                                  generateExamples3layerGen, \
+from functions.TAfunctions import generateExamples3layerGen, \
                                   generatePredictionInput3layer, \
                                   interpolate, \
                                   cleantobeginning, \
@@ -83,7 +72,6 @@ def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
                 model.add(Conv2D(nfeature, kernel_size=(3, 1), padding='same',
                              strides=(1, 1), data_format='channels_last',
                              use_bias=True))
-        #model.add(GaussianNoise(.0001))
         if use_leaky_relu is False:
             model.add(Activation('relu'))
         else:
@@ -186,15 +174,12 @@ def build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
 
 run_params = GetParams()
 
-
 # --------------------------------------------------
 # Import list of symbols to process.
 # --------------------------------------------------
 
 # read list of symbols from disk.
-#stockList = 'Naz100'
-#stockList = 'SP500'
-#stockList = 'SP_wo_Naz'
+# - choices for stockList = 'Naz100', 'SP500', 'SP_wo_Naz'
 stockList = run_params['stockList']
 if stockList == 'Naz100':
     filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
@@ -321,14 +306,10 @@ for itrial in range(25):
     shortest_incr = int(np.random.triangular(left=shortest_incr_range[0], mode=shortest_incr_range[1], right=shortest_incr_range[2], size=1))
     long_incr = min(15, shortest_incr + int(np.random.triangular(left=longest_incr_range[0], mode=longest_incr_range[1], right=longest_incr_range[2], size=1)))
     incr_incr = max(1, int(float(long_incr - shortest_incr) / 3.))
-    #first_history_index = adjClose.shape[1] - ((adjClose.shape[1]- max_period) / max_period)*max_period
-    #first_history_index = 1500
     first_history_index = run_params['first_history_index']
-    #num_stocks = 7
     num_stocks = run_params['num_stocks']
 
     if stockList == 'Naz100':
-        #number_to_drop = 10
         number_to_drop = int(np.random.uniform(low=10, high=31, size=1))
     else:
         number_to_drop = 20
@@ -341,22 +322,17 @@ for itrial in range(25):
     missing_stocks = missing_stocks[::-1]
 
     perform_batch_normalization = np.random.choice([True, False, False, False])
-    #use_dense_layers = np.random.choice([True, False])
+    use_dense_layers = np.random.choice([True])
     dense_factor = np.random.triangular(left=2., mode=3.5, right=8.)
     use_leaky_relu = np.random.choice([True, False])
     use_separable = np.random.choice([True, True, True, True, False])
     use_dropout = np.random.choice([True, False, False, False])
     leaky_relu_alpha = np.random.triangular(left=0.1, mode=.375, right=.7)
-    #feature_map_factor = np.random.triangular(left=0., mode=.3, right=3)
 
-    #number_feature_maps = [4, 8, 16, 32, 64, 128, 128, 128]
-    #number_feature_maps = [4, 6, 8, 10, 12, 14, 16, 18]
-    #feature_map_factor = np.random.choice([1,2,3,4,5,6,7,8]) * 5
     feature_map_factor_range = run_params['feature_map_factor_range']
     feature_map_factor = int(np.random.triangular(left=feature_map_factor_range[0],
                                               mode=feature_map_factor_range[1],
                                               right=feature_map_factor_range[2]))
-    #number_feature_maps = np.array([4, 6, 8, 10, 12, 14, 16, 18]) * feature_map_factor
     number_feature_maps = np.ones(int(np.random.triangular(3,3,15.99)), 'int') * feature_map_factor
 
     optimizer_choice = np.random.choice(['RMSprop',
@@ -369,15 +345,8 @@ for itrial in range(25):
     loss_function = np.random.choice(['mse',
                                   'mean_absolute_error',
                                   'mean_absolute_percentage_error',
-                                  #'kullback_leibler_divergence',
                                   'mean_squared_logarithmic_error'])
     callback_mode = 'auto'
-    '''
-    if loss_function=='kullback_leibler_divergence':
-        callback_mode = 'max'
-    else:
-        callback_mode = 'min'
-    '''
 
     learning_rate = 10. ** np.random.triangular(-4.1, -3.15, -2.25)
     dropout_pct = np.random.triangular(0.05, .35, 0.65)
@@ -387,8 +356,6 @@ for itrial in range(25):
     # --------------------------------------------------
 
     # update file with training parameters
-    #params_filename = "pngs/"+timestamp+'.txt'
-    #params_filename = "pngs/params_"+stockList+'-'+str(itrial)+"_"+timestamp+'.txt'
     params_filename = "pngs/"+str(timestamp)+"_"+stockList+"_"+str(itrial)+'.txt'
     with open(params_filename, 'a') as f:
         f.write("[training_params]\n")
@@ -400,17 +367,6 @@ for itrial in range(25):
         f.write("itrial: "+str(itrial)+"\n")
         f.write("stockList: "+stockList+"\n")
 
-    '''
-    shortest_incr = int(np.random.triangular(left=1, mode=1.3, right=5, size=1))
-    #middle_incr = 2
-    middle_incr = shortest_incr + int(np.random.uniform(low=1, high=6, size=1))
-    #long_incr = 4
-    long_incr = min(15, middle_incr + int(np.random.uniform(low=1, high=6, size=1)))
-    short_period = num_periods_history*shortest_incr # days
-    med_period = num_periods_history*middle_incr # months
-    max_period = num_periods_history*long_incr # months
-    increments = [shortest_incr, middle_incr, long_incr]
-    '''
     increments = np.arange(shortest_incr, long_incr+1.e-5, incr_incr).astype('int')
     print(" ... increments = ", increments)
 
@@ -443,8 +399,6 @@ for itrial in range(25):
     adjClose_excluded = np.empty((adjClose_subset.shape[0]), 'float')
     missing_years = np.random.uniform(low=yeararray[0], high=yeararray[-1], size=8).astype(int)
     missing_years = list(set(missing_years))
-    #if stockList == 'SP_wo_Naz':
-    #    missing_years = [2006, 2013]
     for i, idate in enumerate(yeararray):
         if idate in missing_years:
             datearray_excluded = np.hstack((datearray_excluded, datearray_subset[i]))
@@ -470,7 +424,6 @@ for itrial in range(25):
 
     dates = np.array(dates)
     companies = np.array(companies)
-    #break
 
     print("    ... removing nan examples in Xtrain, Ytrain ...")
     for ii in range(Xtrain.shape[0]-1, -1, -1):
@@ -659,9 +612,6 @@ for itrial in range(25):
     # --------------------------------------------------
 
     # read list of symbols from disk.
-    #stockList_predict = 'Naz100'
-    #stockList_predict = 'SP500'
-    #stockList_predict = 'SP_wo_Naz'
     stockList_predict =  run_params['stockList_predict']
     if stockList_predict == 'Naz100':
         filename_predict = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
@@ -675,7 +625,7 @@ for itrial in range(25):
     # Make a plot showing all symbols in list
     # --------------------------------------------------
 
-    ## update quotes from list of symbols
+    # update quotes from list of symbols
     (symbols_directory, symbols_file) = os.path.split(filename_predict)
     basename, extension = os.path.splitext(symbols_file)
     print((" symbols_directory = ", symbols_directory))
@@ -717,7 +667,6 @@ for itrial in range(25):
     print("\n\n ... missing_years = ", missing_years, "\n\n")
     print(" ... increments (days) ", increments)
     print(" ... analysis periods (days) ", list(np.array(increments)*num_periods_history), "\n\n")
-
 
     if first_trial or (stockList != 'SP_wo_Naz'):
         history = model.fit(Xtrain_keep, Ytrain_keep.reshape(Ytrain_keep.shape[0], 1),
@@ -775,7 +724,6 @@ for itrial in range(25):
     _plt5_ymin = []
     _plt5_ymax = []
 
-    #for num_stocks in range(5, 9):
     for inum_stocks in [num_stocks]:
         cumu_system = [10000.0]
         cumu_system_worst = [10000.0]
@@ -832,9 +780,7 @@ for itrial in range(25):
         _forecast_median -= np.median(_forecast_median)
         num_months_medium = int(12*13.75)
         num_months = int(12*4.75)
-        #system_label = str(itrial)+" "+timestamp+" "+str(missing_years)
         system_label = str(itrial)+" "+timestamp+" "+str(missing_years)+" "+str(increments)
-        #system_label = str(inum_stocks)+" "+timestamp+" "+str(missing_years)
         plt.close(2)
         plt.figure(2, figsize=(14, 10))
         if first_trial or itrial%1 == 0:
@@ -843,7 +789,6 @@ for itrial in range(25):
             plt.subplot(subplotsize[0])
         if first_trial or itrial%1 == 0:
             plt.plot(plotdates, cumu_BH, 'r-', lw=3, label='B&H')
-        #plt.plot(plotdates, cumu_system, 'k-', label='%s %s' % (str(timestamp), str(missing_years)))
         plt.plot(plotdates, cumu_system, 'k-', label=system_label)
         plt.plot(plotdates, cumu_system_worst, 'b-', lw=.25)
         if not first_trial:
@@ -855,7 +800,6 @@ for itrial in range(25):
         plt.yscale('log')
         plt.legend()
         plt.title('Train on '+stockList+' w/o '+str(len(missing_stocks))+' random stocks\nPredict on all '+stockList_predict+' stocks\n'+str(missing_stocks))
-        #plt.text(plotdates[-1], cumu_system[-1], str(itrial))
         plt.text(plotdates[-1], cumu_system[-1], str(itrial))
         plt.text(plotdates[-1]+datetime.timedelta(100), cumu_system_worst[-1], str(itrial), color='b')
         plt.text(plotdates[0]+datetime.timedelta(100), 7000., "perform_batch_normalization: "+str(perform_batch_normalization))
@@ -888,15 +832,12 @@ for itrial in range(25):
         plt.grid(True)
         plt.yscale('log')
         plt.legend(loc='upper left')
-        #plt.title('Train on SP500 w/o 20 random stocks\nPredict on all SP500 stocks\n'+str(missing_stocks))
         plt.title('Train on '+stockList+' w/o '+str(len(missing_stocks))+' random stocks\nPredict on all '+stockList_predict+' stocks\n'+str(missing_stocks))
-        #plt.text(plotdates[-1], cumu_system[-1]/cumu_system[-num_months_medium]*10000., str(itrial))
         plt.text(plotdates[-1], cumu_system[-1]/cumu_system[-num_months_medium]*10000., str(itrial))
         plt.text(plotdates[-1]+datetime.timedelta(20), cumu_system_worst[-1]/cumu_system_worst[-num_months_medium]*10000., str(itrial), color='b')
         plt.text(plotdates[-num_months_medium]+datetime.timedelta(100), 9500., "perform_batch_normalization: "+str(perform_batch_normalization))
         plt.text(plotdates[-num_months_medium]+datetime.timedelta(700), 9500., "dense_factor: "+str(dense_factor))
         plt.text(plotdates[-num_months_medium]+datetime.timedelta(1200), 9500., "loss function: "+loss_function)
-        #plt.savefig("pngs/fig-4_"+stockList+'_'+str(itrial)+"_"+timestamp+'.png', format='png')
         plt.subplot(subplotsize[1])
         plt.grid(True)
         plt.plot(plotdates[-num_months_medium:], _forecast_mean[-num_months_medium:], label='forecast_mean')
@@ -924,15 +865,12 @@ for itrial in range(25):
         plt.grid(True)
         plt.yscale('log')
         plt.legend(loc='upper left')
-        #plt.title('Train on SP500 w/o 20 random stocks\nPredict on all SP500 stocks\n'+str(missing_stocks))
         plt.title('Train on '+stockList+' w/o '+str(len(missing_stocks))+' random stocks\nPredict on all '+stockList_predict+' stocks\n'+str(missing_stocks))
-        #plt.text(plotdates[-1], cumu_system[-1]/cumu_system[-num_months]*10000., str(itrial))
         plt.text(plotdates[-1], cumu_system[-1]/cumu_system[-num_months]*10000., str(itrial))
         plt.text(plotdates[-1]+datetime.timedelta(20), cumu_system_worst[-1]/cumu_system_worst[-num_months]*10000., str(itrial), color='b')
         plt.text(plotdates[-num_months]+datetime.timedelta(100), 9500., "perform_batch_normalization: "+str(perform_batch_normalization))
         plt.text(plotdates[-num_months]+datetime.timedelta(700), 9500., "dense_factor: "+str(dense_factor))
         plt.text(plotdates[-num_months]+datetime.timedelta(1200), 9500., "loss function: "+loss_function)
-        #plt.savefig("pngs/fig-4_"+stockList+'_'+str(itrial)+"_"+timestamp+'.png', format='png')
         plt.subplot(subplotsize[1])
         plt.grid(True)
         plt.plot(plotdates[-num_months:], _forecast_mean[-num_months:], label='forecast_mean')
@@ -948,15 +886,10 @@ for itrial in range(25):
         _plt5_xmax = np.percentile(_plt5_xmax, 80)
         _plt5_ymin = np.percentile(_plt5_ymin, 5)
         _plt5_ymax = np.percentile(_plt5_ymax, 95)
-        #_plt5_xmin = -.5
-        #_plt5_xmax = .5
-        #_plt5_ymin = -.5
-        #_plt5_ymax = .5
         plt.xlim((_plt5_xmin, _plt5_xmax))
         plt.ylim((_plt5_ymin, _plt5_ymax))
         plt.xlabel('actual')
         plt.ylabel('forecast')
-        #plt.savefig("pngs/"+stockList+'_'+str(inum_stocks)+'_Crossplot_'+str(itrial)+"_"+timestamp+"_"+str(missing_years)+str(increments)+'.png', format='png')
         plt.savefig("pngs/"+timestamp+"_"+stockList+'_'+str(itrial)+"_crossplot"+'.png', format='png')
 
         forecast_date = datearray[-1]
@@ -1210,7 +1143,3 @@ for itrial in range(25):
         plt.close('all')
         del model
         K.clear_session()
-
-
-
-
