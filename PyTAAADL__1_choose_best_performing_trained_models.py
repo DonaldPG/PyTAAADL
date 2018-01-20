@@ -49,6 +49,7 @@ from functions.TAfunctions import _is_odd, \
                                   interpolate, \
                                   cleantobeginning, \
                                   cleantoend
+from functions.GetParams import GetParams
 from functions.UpdateSymbols_inHDF5 import UpdateHDF5, \
                                            loadQuotes_fromHDF
 os.chdir(_cwd)
@@ -505,14 +506,24 @@ def performance_metric(models_plotdates, avg_gain, sort_mode='sharpe', number_mo
 
 
 
+# --------------------------------------------------
+# Get program parameters.
+# --------------------------------------------------
+
+run_params = GetParams()
+
 
 # --------------------------------------------------
 # Import list of symbols to process.
 # --------------------------------------------------
 
 # read list of symbols from disk.
-stockList = 'Naz100'
-filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
+#stockList = 'Naz100'
+stockList = run_params['stockList_predict']
+if stockList == 'Naz100':
+    filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
+elif stockList == 'SP500' or stockList == 'SP_wo_Naz':
+    filename = os.path.join(_data_path, 'symbols', 'SP500_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
 
 # --------------------------------------------------
 # Get quotes for each symbol in list
@@ -556,8 +567,10 @@ print(" security values check: ", adjClose[np.isnan(adjClose)].shape)
 
 best_final_value = -99999
 best_recent_final_value = -99999
-num_periods_history = 20
-first_history_index = 1500
+#num_periods_history = 20
+#first_history_index = 1500
+num_periods_history = run_params['num_periods_history']
+first_history_index = run_params['first_history_index']
 
 try:
     for jdate in range(len(datearray)):
@@ -599,7 +612,8 @@ datearray_new_months.sort()
 # --------------------------------------------------
 
 #for model_filter in ['SP', 'Naz100', 'all']:
-model_filter = 'SP'
+#model_filter = 'SP'
+model_filter = run_params['model_filter']
 
 models_folder = os.path.join(os.getcwd(), 'pngs')
 models_list = os.listdir(models_folder)
@@ -611,20 +625,26 @@ if model_filter == 'Naz100':
 if model_filter == 'SP':
     models_list = [i for i in models_list if 'SP' in i]
 
-sort_mode = 'sharpe'
+#sort_mode = 'sharpe'
 #sort_mode = 'sortino'
 #sort_mode = 'sharpe_plus_sortino'
+sort_mode = run_params['sort_mode']
 
 print("\n\n****************************\n")
 print(" ... model_filter = ", model_filter)
 print(" ... sort_mode = ", sort_mode)
 
-inum_stocks = 7
+#inum_stocks = 7
+inum_stocks = run_params['num_stocks']
 print(" ... inum_stocks = ", inum_stocks)
 
+months_for_performance_comparison = run_params['months_for_performance_comparison']
 
+# create folder for best performing output, if it doesn't exist
+if not os.path.exists(os.path.join(models_folder, run_params['folder_for_best_performers'])):
+        os.mkdir(os.path.join(models_folder, run_params['folder_for_best_performers']))
 
-for i_num_months in [6]:
+for i_num_months in [months_for_performance_comparison]:
 
     print("\n\n\n******************************************************************")
     print(" number months for sharpe or sortino = ", i_num_months)
@@ -687,15 +707,15 @@ for i_num_months in [6]:
     sharpe_shortlist = []
     sortino_shortlist = []
     for i, imodel in enumerate(all_model_names):
-        if system_final_values[i] > 70000000:
+        if system_final_values[i] > run_params['final_system_value_threshold']:
             sharpe_shortlist.append(sharpe_list[i])
             sortino_shortlist.append(sortino_list[i])
    # sharpe_threshold = np.median(sharpe_shortlist)
    # sortino_threshold = np.median(sortino_shortlist)
     sharpe_shortlist = np.array(sharpe_shortlist)
     sortino_shortlist = np.array(sortino_shortlist)
-    sharpe_threshold = np.percentile(sharpe_shortlist,85)
-    sortino_threshold = np.percentile(sortino_shortlist,85)
+    sharpe_threshold = np.percentile(sharpe_shortlist, run_params['sharpe_threshold_percentile'])
+    sortino_threshold = np.percentile(sortino_shortlist, run_params['sortino_threshold_percentile'])
 
     useless_models = []
     model_count_sharpe = []
@@ -731,15 +751,15 @@ for i_num_months in [6]:
         if (model_count_sharpe[-1] == 0 and model_count_sortino[-1] == 0) or system_final_values[i] < 10000000.:
             useless_models.append(imodel)
         '''
-        #if system_final_values[i] > 70000000.:
-        if system_final_values[i] > 70000000. and (sharpe_list[i] > sharpe_threshold or sortino_list[i] > sortino_threshold):
-            shutil.copy2(imodel, 'best_performers4')
-            shutil.copy2(imodel.replace('txt', 'hdf'), 'best_performers4')
-            shutil.copy2(imodel.replace('txt', 'json'), 'best_performers4')
-            shutil.copy2(imodel.replace('.txt', '_fig-2.png'), 'best_performers4')
-            shutil.copy2(imodel.replace('.txt', '_fig-3.png'), 'best_performers4')
-            shutil.copy2(imodel.replace('.txt', '_fig-4.png'), 'best_performers4')
-            shutil.copy2(imodel.replace('.txt', '_crossplot.png'), 'best_performers4')
+        #if system_final_values[i] > run_params['final_system_value_threshold'].:
+        if system_final_values[i] > run_params['final_system_value_threshold'] and (sharpe_list[i] > sharpe_threshold or sortino_list[i] > sortino_threshold):
+            shutil.copy2(imodel, run_params['folder_for_best_performers'])
+            shutil.copy2(imodel.replace('txt', 'hdf'), run_params['folder_for_best_performers'])
+            shutil.copy2(imodel.replace('txt', 'json'), run_params['folder_for_best_performers'])
+            shutil.copy2(imodel.replace('.txt', '_fig-2.png'), run_params['folder_for_best_performers'])
+            shutil.copy2(imodel.replace('.txt', '_fig-3.png'), run_params['folder_for_best_performers'])
+            shutil.copy2(imodel.replace('.txt', '_fig-4.png'), run_params['folder_for_best_performers'])
+            shutil.copy2(imodel.replace('.txt', '_crossplot.png'), run_params['folder_for_best_performers'])
         else:
             useless_models.append(imodel)
 

@@ -55,6 +55,7 @@ from functions.TAfunctions import _is_odd, \
                                   cleantoend
 from functions.UpdateSymbols_inHDF5 import UpdateHDF5, \
                                            loadQuotes_fromHDF
+from functions.GetParams import GetParams
 from functions.se import squeeze_excite_block
 os.chdir(_cwd)
 
@@ -62,7 +63,7 @@ os.chdir(_cwd)
 # Build standard keras model
 # --------------------------------------------------
 def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
-                   use_leaky_relu, use_separable ):
+                   use_leaky_relu, use_separable, use_dropout ):
 
     model = Sequential()
 
@@ -87,7 +88,7 @@ def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
             model.add(Activation('relu'))
         else:
             model.add(LeakyReLU(alpha=leaky_relu_alpha))
-        if i > 2:
+        if use_dropout == True and i > 2:
             model.add(Dropout(dropout_pct))
         #if _is_odd(i) or i == number_feature_maps[-1]:
         #    model.add(MaxPooling2D(pool_size=(2, 1)))
@@ -146,13 +147,13 @@ def build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
             x = Activation('relu')(x)
         else:
             x = LeakyReLU(alpha=leaky_relu_alpha)(x)
-        if i > 2:
-            x = Dropout(dropout_pct)(x)
+        #if i > 2:
+        #    x = Dropout(dropout_pct)(x)
         #if _is_odd(i) or i == number_feature_maps[-1]:
         #    model.add(MaxPooling2D(pool_size=(2, 1)))
         print("i, model shape = ", i, K.shape(x))
 
-        x = squeeze_excite_block(x, ratio=16)
+    x = squeeze_excite_block(x, ratio=16)
 
     nfeature = 16
     for i in range(2):
@@ -179,15 +180,22 @@ def build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
     return model
 
 
+# --------------------------------------------------
+# Get program parameters.
+# --------------------------------------------------
+
+run_params = GetParams()
+
 
 # --------------------------------------------------
 # Import list of symbols to process.
 # --------------------------------------------------
 
 # read list of symbols from disk.
-stockList = 'Naz100'
+#stockList = 'Naz100'
 #stockList = 'SP500'
-stockList = 'SP_wo_Naz'
+#stockList = 'SP_wo_Naz'
+stockList = run_params['stockList']
 if stockList == 'Naz100':
     filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
 elif stockList == 'SP500' or stockList == 'SP_wo_Naz':
@@ -285,7 +293,8 @@ for ii in range(adjClose.shape[0]):
 first_trial = True
 best_final_value = -99999
 best_recent_final_value = -99999
-num_periods_history = 20
+#num_periods_history = 20
+num_periods_history = run_params['num_periods_history']
 
 try:
     for jdate in range(len(datearray)):
@@ -305,13 +314,18 @@ for itrial in range(25):
     # --------------------------------------------------
     # set up randomly selected parameters
     # --------------------------------------------------
+    shortest_incr_range = run_params['shortest_incr_range']
+    longest_incr_range = run_params['longest_incr_range']
+
     timestamp = time.strftime("_%Y-%m-%d.%H-%M")
-    shortest_incr = int(np.random.triangular(left=1, mode=3, right=5.8, size=1))
-    long_incr = min(15, shortest_incr + int(np.random.triangular(left=2, mode=7.5, right=13, size=1)))
+    shortest_incr = int(np.random.triangular(left=shortest_incr_range[0], mode=shortest_incr_range[1], right=shortest_incr_range[2], size=1))
+    long_incr = min(15, shortest_incr + int(np.random.triangular(left=longest_incr_range[0], mode=longest_incr_range[1], right=longest_incr_range[2], size=1)))
     incr_incr = max(1, int(float(long_incr - shortest_incr) / 3.))
     #first_history_index = adjClose.shape[1] - ((adjClose.shape[1]- max_period) / max_period)*max_period
-    first_history_index = 1500
-    num_stocks = 7
+    #first_history_index = 1500
+    first_history_index = run_params['first_history_index']
+    #num_stocks = 7
+    num_stocks = run_params['num_stocks']
 
     if stockList == 'Naz100':
         #number_to_drop = 10
@@ -331,12 +345,17 @@ for itrial in range(25):
     dense_factor = np.random.triangular(left=2., mode=3.5, right=8.)
     use_leaky_relu = np.random.choice([True, False])
     use_separable = np.random.choice([True, True, True, True, False])
+    use_dropout = np.random.choice([True, False, False, False])
     leaky_relu_alpha = np.random.triangular(left=0.1, mode=.375, right=.7)
     #feature_map_factor = np.random.triangular(left=0., mode=.3, right=3)
 
     #number_feature_maps = [4, 8, 16, 32, 64, 128, 128, 128]
     #number_feature_maps = [4, 6, 8, 10, 12, 14, 16, 18]
-    feature_map_factor = np.random.choice([1,2,3,4,5,6,7,8]) * 5
+    #feature_map_factor = np.random.choice([1,2,3,4,5,6,7,8]) * 5
+    feature_map_factor_range = run_params['feature_map_factor_range']
+    feature_map_factor = int(np.random.triangular(left=feature_map_factor_range[0],
+                                              mode=feature_map_factor_range[1],
+                                              right=feature_map_factor_range[2]))
     #number_feature_maps = np.array([4, 6, 8, 10, 12, 14, 16, 18]) * feature_map_factor
     number_feature_maps = np.ones(int(np.random.triangular(3,3,15.99)), 'int') * feature_map_factor
 
@@ -577,13 +596,13 @@ for itrial in range(25):
     # --------------------------------------------------
     # build DL model
     # --------------------------------------------------
-    use_se_block = np.random.choice([True, True, True, True, False])
+    use_se_block = np.random.choice([True, True, False])
     if use_se_block is True:
         model = build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
                    use_leaky_relu, use_separable )
     else:
         model = build_model(Xtrain, number_feature_maps, perform_batch_normalization,
-                   use_leaky_relu, use_separable )
+                   use_leaky_relu, use_separable, use_dropout )
 
     model.summary()
     print("feature_map_factor = ", feature_map_factor)
@@ -625,6 +644,8 @@ for itrial in range(25):
         f.write("feature_map_factor = "+str(feature_map_factor)+"\n")
         f.write("perform_batch_normalization: "+str(perform_batch_normalization)+"\n")
         f.write("dense_factor: "+str(dense_factor)+"\n")
+        f.write("use_dropout: "+str(use_dropout)+"\n")
+        f.write("dropout_pct: "+str(dropout_pct)+"\n")
         f.write("use_separable: "+str(use_separable)+"\n")
         f.write("use_leaky_relu: "+str(use_leaky_relu)+"\n")
         f.write("leaky_relu_alpha: "+str(leaky_relu_alpha)+"\n")
@@ -638,9 +659,10 @@ for itrial in range(25):
     # --------------------------------------------------
 
     # read list of symbols from disk.
-    stockList_predict = 'Naz100'
+    #stockList_predict = 'Naz100'
     #stockList_predict = 'SP500'
     #stockList_predict = 'SP_wo_Naz'
+    stockList_predict =  run_params['stockList_predict']
     if stockList_predict == 'Naz100':
         filename_predict = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
     elif stockList_predict == 'SP500' or stockList_predict == 'SP_wo_Naz':
@@ -1108,6 +1130,7 @@ for itrial in range(25):
                         "dense_factor,"+
                         "use_leaky_relu,"+
                         "leaky_relu_alpha,"+
+                        "use_dropout,"+
                         "dropout_pct,"+
                         "optimizer_choice,"+
                         "learning_rate,"+
@@ -1154,6 +1177,7 @@ for itrial in range(25):
                     str(dense_factor)+", "+\
                     str(use_leaky_relu)+", "+\
                     str(leaky_relu_alpha)+", "+\
+                    str(use_dropout)+", "+\
                     str(dropout_pct)+", "+\
                     optimizer_choice+", "+\
                     str(learning_rate)+", "+\
