@@ -204,6 +204,7 @@ print((" symbols_directory = ", symbols_directory))
 print(" symbols_file = ", symbols_file)
 print("symbols_directory, symbols.file = ", symbols_directory, symbols_file)
 ###############################################################################################
+
 do_update = True
 if do_update == True:
     UpdateHDF_yf(symbols_directory, symbols_file)  ### assume hdf is already up to date
