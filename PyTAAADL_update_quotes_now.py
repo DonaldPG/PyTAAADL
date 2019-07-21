@@ -72,6 +72,21 @@ def _main():
     adjClose, symbols, datearray, _, _ = loadQuotes_fromHDF(symbols_file)
     lastdate = datearray[-1]
 
+    print("\n\n\n ************************\n")
+    print(" quote update completed.")
+    print("\n Date range = ", str(datearray[0]), " to ", str(datearray[-1]) )
+    print(" Number of symbols = ", len(symbols))
+    print(" shape of array holding all quotes = ", adjClose.shape)
+    print("\n ************************\n")
+    print(" files in symbols directory:")
+    filelist = os.listdir(symbol_directory)
+    for file in filelist:
+        file_full_path = os.path.join(symbol_directory, file)
+        file_size_bytes = os.stat(file_full_path).st_size
+        file_size_Kb = file_size_bytes / 1024.
+        print(" - ", format(file, '35s'), format(file_size_Kb,'9,.2f'), " KB")
+
+
 
 if __name__ == '__main__':
     # execute only if run as the entry point into the program
