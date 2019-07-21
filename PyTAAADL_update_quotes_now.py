@@ -32,6 +32,7 @@ def _main():
     print("params = ", params)
     print("")
     stockList = params['stockList_predict']
+    stockList = params['stockList']
 
     print("\n\n\n*************************************************************")
     print("... top of _main in PyTAAA.py ...")
@@ -42,8 +43,10 @@ def _main():
     try:
         if stockList == 'Naz100':
             _, removedTickers, addedTickers = get_Naz100List(verbose=True)
-        elif stockList == 'SP500':
+        elif stockList == 'SP500' or stockList == 'SP_wo_Naz':
             _, removedTickers, addedTickers = get_SP500List(verbose=True)
+        elif stockList == 'RU1000' or stockList == 'RU_wo_Naz':
+            _, removedTickers, addedTickers = get_RU1000List(verbose=True)
     except:
         removedTickers, addedTickers = [], []
 
@@ -51,8 +54,11 @@ def _main():
 
     if stockList == 'Naz100':
         symbol_file = "Naz100_Symbols.txt"
-    elif stockList == 'SP500':
+    elif stockList == 'SP500' or stockList == 'SP_wo_Naz':
         symbol_file = "SP500_Symbols.txt"
+    elif stockList == 'RU1000' or stockList == 'RU_wo_Naz':
+        symbol_file = "RU1000_Symbols.txt"
+
     symbols_file = os.path.join( symbol_directory, symbol_file )
 
     start_time = time.time()

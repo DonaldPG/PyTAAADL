@@ -42,7 +42,7 @@ from functions.TAfunctions import generateExamples3layerGen, \
                                   interpolate, \
                                   cleantobeginning, \
                                   cleantoend
-from functions.UpdateSymbols_inHDF5 import UpdateHDF5, \
+from functions.UpdateSymbols_inHDF5 import UpdateHDF_yf, \
                                            loadQuotes_fromHDF
 from functions.GetParams import GetParams
 from functions.se import squeeze_excite_block
@@ -63,7 +63,7 @@ def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
                              kernel_initializer='lecun_uniform', bias_initializer='zeros',
                              input_shape=(Xtrain.shape[1], Xtrain.shape[2], 3)))
         else:
-            if perform_batch_normalization is True:
+            if perform_batch_normalization == True:
                 model.add(Conv2D(nfeature, kernel_size=(3, 1), padding='same',
                              strides=(1, 1), data_format='channels_last',
                              use_bias=False))
@@ -72,7 +72,7 @@ def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
                 model.add(Conv2D(nfeature, kernel_size=(3, 1), padding='same',
                              strides=(1, 1), data_format='channels_last',
                              use_bias=True))
-        if use_leaky_relu is False:
+        if use_leaky_relu == False:
             model.add(Activation('relu'))
         else:
             model.add(LeakyReLU(alpha=leaky_relu_alpha))
@@ -95,6 +95,8 @@ def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
                                       depth_multiplier=1, use_bias=False))
         model.add(BatchNormalization())
         model.add(Activation('relu'))
+        if use_dropout == True:
+            model.add(Dropout(dropout_pct))
 
     model.add(Flatten())
     model.add(Dense(int(64./dense_factor), kernel_initializer='lecun_uniform', bias_initializer='zeros'))
@@ -121,7 +123,7 @@ def build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
                              strides=(1, 1), data_format='channels_last',
                              kernel_initializer='lecun_uniform', bias_initializer='zeros')(inputs)
         else:
-            if perform_batch_normalization is True:
+            if perform_batch_normalization == True:
                 x = Conv2D(nfeature, kernel_size=(3, 1), padding='same',
                              strides=(1, 1), data_format='channels_last',
                              use_bias=False)(x)
@@ -131,7 +133,7 @@ def build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
                              strides=(1, 1), data_format='channels_last',
                              use_bias=True)(x)
         #model.add(GaussianNoise(.0001))
-        if use_leaky_relu is False:
+        if use_leaky_relu == False:
             x = Activation('relu')(x)
         else:
             x = LeakyReLU(alpha=leaky_relu_alpha)(x)
@@ -185,6 +187,8 @@ if stockList == 'Naz100':
     filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
 elif stockList == 'SP500' or stockList == 'SP_wo_Naz':
     filename = os.path.join(_data_path, 'symbols', 'SP500_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
+elif stockList == 'RU1000' or stockList == 'RU_wo_Naz':
+    filename = os.path.join(_data_path, 'symbols', 'RU1000_Symbols.txt')                   # plotmax = 1.e10, runnum = 902
 
 # --------------------------------------------------
 # Get quotes for each symbol in list
@@ -200,9 +204,9 @@ print((" symbols_directory = ", symbols_directory))
 print(" symbols_file = ", symbols_file)
 print("symbols_directory, symbols.file = ", symbols_directory, symbols_file)
 ###############################################################################################
-do_update = False
-if do_update is True:
-    UpdateHDF5(symbols_directory, symbols_file)  ### assume hdf is already up to date
+do_update = True
+if do_update == True:
+    UpdateHDF_yf(symbols_directory, symbols_file)  ### assume hdf is already up to date
 adjClose, symbols, datearray, _, _ = loadQuotes_fromHDF(filename)
 
 if stockList == 'SP_wo_Naz':
@@ -326,7 +330,7 @@ for itrial in range(25):
     dense_factor = np.random.triangular(left=2., mode=3.5, right=8.)
     use_leaky_relu = np.random.choice([True, False])
     use_separable = np.random.choice([True, True, True, True, False])
-    use_dropout = np.random.choice([True, False, False, False])
+    use_dropout = np.random.choice([True, False, False, False, False, False, False])
     leaky_relu_alpha = np.random.triangular(left=0.1, mode=.375, right=.7)
 
     feature_map_factor_range = run_params['feature_map_factor_range']
@@ -549,8 +553,9 @@ for itrial in range(25):
     # --------------------------------------------------
     # build DL model
     # --------------------------------------------------
-    use_se_block = np.random.choice([True, True, False])
-    if use_se_block is True:
+    use_se_block = np.random.choice([True, False, False, False, False, False, False])
+    use_se_block = False
+    if use_se_block == True:
         model = build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
                    use_leaky_relu, use_separable )
     else:
@@ -633,7 +638,7 @@ for itrial in range(25):
     print("symbols_directory, symbols.file = ", symbols_directory, symbols_file)
     ###############################################################################################
     do_update = False
-    if do_update is True:
+    if do_update == True:
         UpdateHDF5(symbols_directory, symbols_file)  ### assume hdf is already up to date
     adjClose_predict, symbols_predict, datearray_predict, _, _ = loadQuotes_fromHDF(filename_predict)
 
@@ -659,7 +664,7 @@ for itrial in range(25):
                                  verbose=1,
                                  save_best_only=True,
                                  mode=callback_mode)
-    stop_early = EarlyStopping(monitor='val_loss', min_delta=0, patience=7, verbose=1, mode=callback_mode)
+    stop_early = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode=callback_mode)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.0001)
     callback_list = [checkpoint, stop_early, reduce_lr]
     num_epochs = 50

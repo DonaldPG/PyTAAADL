@@ -94,13 +94,13 @@ def create_minimal_hdf(dirname, listname='Naz100'):
             quotes_NewSymbols = pd.DataFrame(newadjClose, index=newdates, columns=newsymbols)
 
     # set up to write quotes to disk.
-    listname = 'Naz100' + "_Symbols"
+    filename_prefix = listname + "_Symbols"
 
-    hdf5filename = os.path.join( symbol_directory, listname + "_.hdf5" )
+    hdf5filename = os.path.join( symbol_directory, filename_prefix + "_.hdf5" )
     print("hdf5 filename = ",hdf5filename)
-    quotes_NewSymbols.to_hdf( hdf5filename, listname, mode='a',format='table',append=False,complevel=5,complib='blosc')
+    quotes_NewSymbols.to_hdf( hdf5filename, filename_prefix, mode='a',format='table',append=False,complevel=5,complib='blosc')
 
-    stock_list_filename = os.path.join(symbol_directory, listname + ".txt")
+    stock_list_filename = os.path.join(symbol_directory, filename_prefix + ".txt")
     import shutil
     shutil.copyfile(symbols_file, stock_list_filename)
 
@@ -115,5 +115,6 @@ def create_minimal_hdf(dirname, listname='Naz100'):
 # - listname should be one of : 'Naz100', 'SP500', 'RU1000'
 dirname = os.path.dirname(os.path.abspath(__file__))
 listname = "Naz100"
+#listname = "SP500"
 
-create_minimal_hdf(dirname, listname='Naz100')
+create_minimal_hdf(dirname, listname=listname)

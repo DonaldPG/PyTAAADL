@@ -2224,7 +2224,8 @@ def generateExamples_randomValidate(datearray,adjClose,first_history_index,
 def normcorrcoef(a,b):
     return np.correlate(a,b)/np.sqrt(np.correlate(a,a)*np.correlate(b,b))[0]
 
-
+'''
+### newer version below based on PyTAAA-analyzestocksSP500
 def interpolate(self, method='linear'):
     """
     Interpolate missing values (after the first valid value)
@@ -2262,6 +2263,139 @@ def interpolate(self, method='linear'):
     #result[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1] = np.interp(inds[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1], inds[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1],values[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1])
     if len(invalid[invalid==1]) > 0:
         result[invalid==1] = np.interp(inds[invalid==1], inds[valid==1],values[valid==1])
+
+    return result
+'''
+
+def interpolate(self, method='linear', verbose=True):
+    """
+    Interpolate missing values (after the first valid value)
+    Parameters
+    ----------
+    method : {'linear'}
+    Interpolation method.
+    Time interpolation works on daily and higher resolution
+    data to interpolate given length of interval
+    Returns
+    -------
+    interpolated : Series
+    from-- https://github.com/wesm/pandas/blob/master/pandas/core/series.py
+    edited to keep only 'linear' method
+    Usage: infill NaN values with linear interpolated values
+    """
+
+    import sys
+
+    if sys.version_info < (2,7,12):
+        if verbose:
+            print(" ... inside interpolate (old).... len(self) = ", len(self))
+
+
+        inds = np.arange(len(self))
+        values = np.array(self.copy())
+        if verbose:
+            print(" ... values = ", values)
+            print(" ... values.dtype = ", values.dtype)
+            print(" ... type(values) = ", type(values))
+        invalid = np.isnan(values)
+        valid = -1 * invalid
+        firstIndex = valid.argmax()
+
+        if verbose:
+            print(" ... inside interpolate .... firstIndex = ", firstIndex)
+
+
+        valid = valid[firstIndex:]
+        invalid = invalid[firstIndex:]
+
+        if verbose:
+            print(" ... inside interpolate .... len(valid) = ", len(valid))
+            print(" ... inside interpolate .... len(invalid) = ", len(invalid))
+
+        inds = inds[firstIndex:]
+        result = values.copy()
+        result[firstIndex:][invalid] = np.interp(inds[invalid], inds[valid==0],values[firstIndex:][valid==0])
+
+        '''
+        inds = np.arange(len(self))
+        values = np.array(self.copy())
+        invalid_bool = np.isnan(values)
+        valid = np.ones((len(self)),'int')
+        valid[ invalid_bool==True ] = 0
+        invalid = 1 - valid
+        if verbose:
+            print " ... values = ", values
+            print " ... values.dtype = ", values.dtype
+            print " ... type(values) = ", type(values)
+        firstIndex = valid.argmax()
+        lastIndex = valid.shape[0]-valid[::-1].argmax()
+
+        #valid = valid[firstIndex:lastIndex]
+        #invalid = invalid[firstIndex:lastIndex]
+        valid = valid[valid >= firstIndex]
+        valid = valid[valid <= lastIndex]
+        invalid = invalid[invalid >= firstIndex]
+        invalid = invalid[invalid <= lastIndex]
+        if verbose:
+            print " ... inside interpolate .... firstIndex = ", firstIndex
+
+        #inds = inds[firstIndex:]
+        result = values.copy()
+        #result[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1] = np.interp(inds[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1], inds[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1],values[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1])
+        if len( invalid[invalid==1] ) > 0:
+            result[invalid==1] = np.interp(inds[invalid==1], inds[valid==1],values[valid==1])
+        '''
+
+        if verbose:
+            print(" ... interpolate (old) finished")
+
+    else:
+
+        if verbose:
+            print(" ... inside interpolate (new) .... len(self) = ", len(self))
+        inds = np.arange(len(self))
+        values = np.array(self.copy())
+        if verbose:
+            print(" ... values = ", values)
+            print(" ... values.dtype = ", values.dtype)
+            print(" ... type(values) = ", type(values))
+
+        invalid_bool = np.isnan(values)
+        valid = np.ones((len(self)),'int')
+        valid[ invalid_bool==True ] = 0
+        invalid = 1 - valid
+        firstIndex = valid.argmax()
+        lastIndex = valid.shape[0]-valid[::-1].argmax()
+
+        if verbose:
+            print(" ... inside interpolate .... len(valid) = ", len(valid))
+            print(" ... inside interpolate .... len(invalid) = ", len(invalid))
+            print(" ... inside interpolate .... firstIndex,lastIndex = ", firstIndex,lastIndex)
+
+        #valid = valid[firstIndex:lastIndex]
+        #invalid = invalid[firstIndex:lastIndex]
+        '''
+        valid = valid[valid >= firstIndex]
+        valid = valid[valid <= lastIndex]
+        invalid = invalid[invalid >= firstIndex]
+        invalid = invalid[invalid <= lastIndex]
+        '''
+        valid = valid[inds >= firstIndex]
+        valid = valid[inds <= lastIndex]
+        invalid = invalid[inds >= firstIndex]
+        invalid = invalid[inds <= lastIndex]
+
+        if verbose:
+            print(" ... inside interpolate .... len(valid) = ", len(valid))
+            print(" ... inside interpolate .... len(invalid) = ", len(invalid))
+            print(" ... inside interpolate .... firstIndex,lastIndex = ", firstIndex,lastIndex)
+
+        #inds = inds[firstIndex:]
+        result = values.copy()
+        #result[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1] = np.interp(inds[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1], inds[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1],values[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1])
+        if len(invalid[invalid==1]) > 0:
+            result[invalid==1] = np.interp(inds[invalid==1], inds[valid==1],values[valid==1])
+            #result[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1] = np.interp(inds[firstIndex:lastIndex][invalid[firstIndex:lastIndex]==1], inds[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1],values[firstIndex:lastIndex][valid[firstIndex:lastIndex]==1])
 
     return result
 

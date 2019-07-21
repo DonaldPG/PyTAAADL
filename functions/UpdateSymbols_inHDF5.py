@@ -534,7 +534,9 @@ def UpdateHDF5( symbol_directory, symbols_file ):
 #import functions.fix_yahoo_finance as yf
 #yf.pdr_override() # <== that's all it takes :-)
 
-def get_quotes_yf(symbols_list, start_date=datetime.date(1991,11,1), end_date=datetime.date.today(), num_per_pass=150):
+def get_quotes_yf(symbols_list, start_date=datetime.date(1991,11,1),
+                  end_date=datetime.date.today(), num_per_pass=150,
+                  verbose=False):
     ###
     ### get historical stock quotes.
     ### - web-scrape in a loop assuming that there will be some errors
@@ -565,11 +567,76 @@ def get_quotes_yf(symbols_list, start_date=datetime.date(1991,11,1), end_date=da
     print(" ...download quotes in groups of "+str(num_per_pass)+" stocks per group.")
     df_list = list()
     missing_symbols = symbols_list[:num_per_pass]
+    symbols = symbols_list[:num_per_pass]
     returned_symbols = []
     while True:
+        if verbose:
+            print('...0')
+            print('... len(missing_symbols) = ', len(missing_symbols))
+            print('... first and last missing_symbols = ', [missing_symbols[0],missing_symbols[-1]])
+
+        '''
+        df_temp = pdr.get_data_yahoo(missing_symbols, start=s_date, end=e_date)
+        #print('...1')
+        df_temp = df_temp.stack(0).reset_index(1)
+        #print('...2')
+        df_temp = df_temp.loc[df_temp['level_1']=='Adj Close']
+        #print('...3')
+        df_temp = df_temp.drop('level_1', 1)
+        if returned_symbols != []:
+            returned_symbols = list(df_temp.columns) + returned_symbols
+        else:
+            returned_symbols = list(df_temp.columns)
+        '''
+
+        data = pdr.get_data_yahoo(missing_symbols, start=s_date, end=e_date)
+        try:
+        # for multiple symbols
+            symbolList = list(data['Adj Close'].columns)
+        except:
+            # for single symbol
+            symbolList = symbols
+        if verbose:
+            print('...1')
+            print('... len(symbolList) = ', len(symbolList))
+            print('... type(symbolList) = ', type(symbolList))
+            print('... first and last symbolList = ', [symbolList[0],symbolList[-1]])
+
+        datearray = data['Adj Close'].index
+        x = data['Adj Close'].values
+        newdates = []
+        for i in range(datearray.shape[0]):
+            newdates.append(str(datearray[i]).split(' ')[0])
+        newdates = np.array(newdates)
+        if x.ndim==1:
+            x = x.reshape(x.size, 1)
+        df_temp = pd.DataFrame(x, index=newdates, columns=symbolList)
+        if returned_symbols != []:
+            returned_symbols = list(df_temp.columns) + returned_symbols
+        else:
+            returned_symbols = list(df_temp.columns)
+        if verbose:
+            print('...2')
+            print('... len(returned_symbols) = ', len(returned_symbols))
+            print('... type(returned_symbols) = ', type(returned_symbols))
+            print('... first and last returned_symbols = ', [returned_symbols[0],returned_symbols[-1]])
+
+        df_list.append(df_temp)
+        del data
+        del df_temp
+        if verbose:
+            print(" ... len(df_list) = "+str(len(df_list)))
+        missing_symbols = [x for x in symbols_list if x not in returned_symbols][:num_per_pass]
+        symbols = missing_symbols
+        if len(missing_symbols) == 0:
+            break
+        """
         try:
             #df_temp = pdr.get_data_yahoo(missing_symbols, start=datetime.date(1991,11,1), end=end_date)
-            #print('...0')
+            print('...0')
+            print('... len(missing_symbols) = ', len(missing_symbols))
+            print('... first and last missing_symbols = ', [missing_symbols[0],missing_symbols[-1]])
+
             '''
             df_temp = pdr.get_data_yahoo(missing_symbols, start=s_date, end=e_date)
             #print('...1')
@@ -591,6 +658,11 @@ def get_quotes_yf(symbols_list, start_date=datetime.date(1991,11,1), end_date=da
             except:
                 # for single symbol
                 symbolList = symbols
+            print('...1')
+            print('... len(symbolList) = ', len(symbolList))
+            print('... type(symbolList) = ', type(symbolList))
+            print('... first and last symbolList = ', [symbolList[0],symbolList[-1]])
+
             datearray = data['Adj Close'].index
             x = data['Adj Close'].values
             newdates = []
@@ -604,15 +676,22 @@ def get_quotes_yf(symbols_list, start_date=datetime.date(1991,11,1), end_date=da
                 returned_symbols = list(df_temp.columns) + returned_symbols
             else:
                 returned_symbols = list(df_temp.columns)
+            print('...2')
+            print('... len(returned_symbols) = ', len(returned_symbols))
+            print('... type(returned_symbols) = ', type(returned_symbols))
+            print('... first and last returned_symbols = ', [returned_symbols[0],returned_symbols[-1]])
 
             df_list.append(df_temp)
             del data
             del df_temp
+            print(" ... len(df_list) = "+str(len(df_list)))
             missing_symbols = [x for x in symbols_list if x not in returned_symbols][:num_per_pass]
+            symbols = missing_symbols
             if len(missing_symbols) == 0:
                 break
         except:
             break
+        """
         print(" ...download progress -- downloaded "+str(len(returned_symbols))+" stocks.")
     # combine columns (stock quotes) from multiple calls to web
     df7 = pd.concat(df_list, axis=1)
@@ -792,13 +871,15 @@ def UpdateHDF_yf( symbol_directory, symbols_file ):
     #  - infill interior NaN values using nearest good values to linearly interpolate
     #  - copy first valid quote to from valid date to all earlier positions
     #for ii in range(x.shape[0]):
-    for ii,isymbolupdate in enumerate(symbolListupdate):
+    for ii, isymbolupdate in enumerate(symbolListupdate):
         '''
         if ii%5 == 0:
             print "  ... progress:  ii, symbol = ", ii, isymbolupdate
         '''
+        print("  ... progress:  ii, symbol = ", ii, isymbolupdate)
         xupdate = updatedquotes[isymbolupdate].values
         xupdate = cleanspikes(xupdate)
+        xupdate = cleantobeginning(xupdate)
         xupdate = interpolate(xupdate)
         xupdate = cleantobeginning(xupdate)
         updatedquotes[isymbolupdate] = xupdate
@@ -832,7 +913,7 @@ def UpdateHDF_yf( symbol_directory, symbols_file ):
 
     return
 
-
+'''
 def createHDF( hdf5_directory, symbol_file, listname ):
 
     import os
@@ -886,3 +967,4 @@ def createHDF( hdf5_directory, symbol_file, listname ):
     quotes_df.to_hdf( hdf5filename, listname, mode='a',format='table',append=False,complevel=5,complib='blosc')
 
     return
+'''
