@@ -13,6 +13,7 @@ numpy pandas scipy tensorflow keras time datetime matplotlib
 create an hdf file that holds stock quotes
 
 "python re-generateHDF5.py"
+
 "python PyTAAADL_update_quotes_now.py"
 
 
@@ -29,10 +30,13 @@ create an hdf file that holds stock quotes
 
 5. "python PyTAAADL__5_suggest_stocks_and_investing_percentages.py" -- Evaluate parameters to dynamically alter number_stocks, metric used to subset stocks from ensemble model, and number of months to persist choice of number_stocks, metrics.
 
+
 ### re-evaluate after after the first trading day each month (22 trading days after the start of the previous month) with the commands:
 
 A. "python PyTAAADL_update_quotes_now.py"         
+
 B. "python PyTAAADL__2_create_dynamic_persistence_inputs.py" -- Compute ensemble models from amongst best performing DL models in folder pngs/best_performers4. Creates pandas dataframe for input to next step
+
 C. "python PyTAAADL__5_suggest_stocks_and_investing_percentages.py" -- Evaluate parameters to dynamically alter number_stocks, metric used to subset stocks from ensemble model, and number of months to persist choice of number_stocks, metrics.
        
 ### PyTAAADL purpose
