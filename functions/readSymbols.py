@@ -214,14 +214,14 @@ def get_SP500List( verbose=True ):
         try:
             #print "\n\nrow = \n", row
             col = row.findAll('td')
-            _ticker = col[0].string.strip()
+            _ticker = col[0].text.strip()
             _ticker = _ticker.replace(".","-")
             try:
-                _company = col[1].string.strip()
+                _company = col[1].text.strip()
             except:
                 _company = str(col[1]).split('title="')[-1].split('">')[0]
-            _sector = col[3].string.strip()
-            _subIndustry = col[4].string.strip()
+            _sector = col[3].text.strip()
+            _subIndustry = col[4].text.strip()
             symbolList.append(_ticker)
             companyNamesList.append(_company)
             industry.append(_sector)
