@@ -9,21 +9,21 @@ import datetime
 import numpy as np
 
 from keras import backend as K
-from keras.models import Input
-from keras.models import Model
-from keras.models import Sequential
+#from keras.models import Input
+#from keras.models import Model
+#from keras.models import Sequential
 from keras.models import model_from_json
-from keras.layers import Conv2D
-from keras.layers import SeparableConv2D
-from keras.layers import Activation
-from keras.layers import LeakyReLU
-from keras.layers import MaxPooling2D
-from keras.layers import Dropout
-from keras.layers import Dense
-from keras.layers import Flatten
-from keras.layers import GaussianNoise
-from keras.initializers import Initializer
-from keras.layers.normalization import BatchNormalization
+#from keras.layers import Conv2D
+#from keras.layers import SeparableConv2D
+#from keras.layers import Activation
+#from keras.layers import LeakyReLU
+#from keras.layers import MaxPooling2D
+#from keras.layers import Dropout
+#from keras.layers import Dense
+#from keras.layers import Flatten
+#from keras.layers import GaussianNoise
+#from keras.initializers import Initializer
+#from keras.layers.normalization import BatchNormalization
 from keras.callbacks import ModelCheckpoint
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from keras.optimizers import RMSprop, Adam, Adagrad, Nadam
@@ -46,13 +46,37 @@ from functions.UpdateSymbols_inHDF5 import UpdateHDF_yf, \
                                            loadQuotes_fromHDF
 from functions.GetParams import GetParams
 from functions.se import squeeze_excite_block
+from functions.deep_learning_models import (build_model,
+                                            build_se_model)
 os.chdir(_cwd)
 
+"""
 # --------------------------------------------------
 # Build standard keras model
 # --------------------------------------------------
 def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
-                   use_leaky_relu, use_separable, use_dropout ):
+                use_leaky_relu, use_separable, use_dropout,
+                leaky_relu_alpha, dropout_pct):
+
+    from keras import backend as K
+    from keras.models import Input
+    from keras.models import Model
+    from keras.models import Sequential
+    from keras.models import model_from_json
+    from keras.layers import Conv2D
+    from keras.layers import SeparableConv2D
+    from keras.layers import Activation
+    from keras.layers import LeakyReLU
+    from keras.layers import MaxPooling2D
+    from keras.layers import Dropout
+    from keras.layers import Dense
+    from keras.layers import Flatten
+    from keras.layers import GaussianNoise
+    from keras.initializers import Initializer
+    from keras.layers.normalization import BatchNormalization
+    from keras.callbacks import ModelCheckpoint
+    from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+    from keras.optimizers import RMSprop, Adam, Adagrad, Nadam
 
     model = Sequential()
 
@@ -168,7 +192,7 @@ def build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
     print("final model shape = ", model.output_shape)
 
     return model
-
+"""
 
 # --------------------------------------------------
 # Get program parameters.
@@ -329,9 +353,10 @@ for itrial in range(25):
     perform_batch_normalization = np.random.choice([True, False, False, False])
     use_dense_layers = np.random.choice([True])
     dense_factor = np.random.triangular(left=2., mode=3.5, right=8.)
-    use_leaky_relu = np.random.choice([True, False])
     use_separable = np.random.choice([True, True, True, True, False])
     use_dropout = np.random.choice([True, False, False, False, False, False, False])
+    dropout_pct = np.random.triangular(0.05, .35, 0.65)
+    use_leaky_relu = np.random.choice([True, False])
     leaky_relu_alpha = np.random.triangular(left=0.1, mode=.375, right=.7)
 
     feature_map_factor_range = run_params['feature_map_factor_range']
@@ -354,7 +379,6 @@ for itrial in range(25):
     callback_mode = 'auto'
 
     learning_rate = 10. ** np.random.triangular(-4.1, -3.15, -2.25)
-    dropout_pct = np.random.triangular(0.05, .35, 0.65)
 
     # --------------------------------------------------
     # compute additonal training parameters
@@ -557,11 +581,15 @@ for itrial in range(25):
     use_se_block = np.random.choice([True, False, False, False, False, False, False])
     use_se_block = False
     if use_se_block == True:
-        model = build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
-                   use_leaky_relu, use_separable )
+        model = build_se_model(Xtrain, number_feature_maps,
+                               perform_batch_normalization,
+                               use_leaky_relu, use_separable,
+                               leaky_relu_alpha, dense_factor)
     else:
-        model = build_model(Xtrain, number_feature_maps, perform_batch_normalization,
-                   use_leaky_relu, use_separable, use_dropout )
+        model = build_model(Xtrain, number_feature_maps,
+                            perform_batch_normalization,
+                            use_leaky_relu, leaky_relu_alpha,use_separable,
+                            use_dropout, dropout_pct )
 
     model.summary()
     print("feature_map_factor = ", feature_map_factor)
@@ -1108,6 +1136,7 @@ for itrial in range(25):
                         "dropout_pct,"+
                         "optimizer_choice,"+
                         "learning_rate,"+
+                        "loss_function,"+
                         "stockList_predict,"+
                         "weights_filename,"+
                         "model_json_filename,"+
