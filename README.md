@@ -48,7 +48,7 @@ It's up to the user to decide if they want to do anything with the recommendatio
 ### Back-test performance
 
 <div align="center">
-  <img src="https://github.com/DonaldPG/PyTAAADL/blob/master/pngs/PyTAAADL_backtestWithTrend_2019-07.png">
+  <img src="https://github.com/DonaldPG/PyTAAADL/blob/master/pngs/PyTAAADL_backtestWithTrend_2019-07-20.png">
 </div>
 ### Cautionary Notes:
 
