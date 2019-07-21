@@ -100,6 +100,12 @@ def GetParams():
     params['sharpe_threshold_percentile'] = int(config.get("Valuation", 'sharpe_threshold_percentile'))
     params['sortino_threshold_percentile']      = int(config.get("Valuation", 'sortino_threshold_percentile'))
 
+    params['sort_mode_list']           = np.array(config.get("Valuation", 'sort_mode_list').split(','))
+    params['num_stocks_list']           = np.array(config.get("Valuation", 'num_stocks_list').split(',')).astype('int')
+
+    params['persistence_hdf']    = config.get("Valuation", 'persistence_hdf')
+    params['persistence_months_list']    = np.array(config.get("Valuation", 'persistence_months_list').split(',')).astype('int')
+    params['persistence_months']    = np.array(config.get("Valuation", 'persistence_months').split(',')).astype('int')
 
     return params
 
@@ -115,7 +121,7 @@ def GetFTPParams():
     # read the parameters form the configuration file
     config_filename = "PyTAAADL.params"
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     configfile = open(config_filename, "r")
     config.readfp(configfile)
 
@@ -146,7 +152,7 @@ def GetHoldings():
     # read the parameters form the configuration file
     config_filename = "PyTAAADL_holdings.params"
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     configfile = open(config_filename, "r")
     config.readfp(configfile)
 
@@ -189,7 +195,7 @@ def GetStatus():
     # read the parameters form the configuration file
     status_filename = "PyTAAADL_status.params"
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     configfile = open(status_filename, "r")
     config.readfp(configfile)
 

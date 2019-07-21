@@ -21,6 +21,7 @@ pausetime: 12 hours
 [Valuation]
 # for 0_train_many_DL_models
 best_trained_models_folder:         best_performers5
+# - choices for stockList = 'Naz100', 'SP500', 'SP_wo_Naz'
 stockList:                          SP_wo_Naz
 stockList_predict:                  Naz100
 first_history_index:                1500
@@ -42,3 +43,10 @@ sortino_threshold_percentile:       85
 # for 2_choose_best_performing_trained_models
 num_stocks_list:                    3,5,7,9
 sort_mode_list:                     sortino,sharpe,count,equal
+
+# for 3_evaluate_dynamic_persistence_inputs
+persistence_months:                 4
+persistence_hdf:                    persistence_data_full_2019-02-08.hdf
+
+# for 5_suggest_stocks_and_investing_percentages
+persistence_months_list:            4
