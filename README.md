@@ -45,6 +45,10 @@ PyTAAADL recommends new stock holdings based on training using previous stock hi
 
 It's up to the user to decide if they want to do anything with the recommendations. This is designed and provided for entertainment only. The author does not accept and responsibility for anything done by others with the recommendations.
 
+### Back-test performance
+
+[[https://github.com/DonaldPG/PyTAAADL/blob/master/pngs/PyTAAADL_backtestWithTrend_2019-07|alt=octocat]]
+
 ### Cautionary Notes:
 
 This is a work in progress. Backtests have terrific performance. Forward testing since February 2018, where this system is "paper-traded" manually, initially out-performed the Nasdaq 100 by as much as 10 percent. As of July 2019, it is underperforming the Nasdaq by about 10%. The code has been continually modified during this period. Automatic daily backtests also indicate that this period is one of under-performance that have also been observed, for example in 2000, 2008, and 2015. It is too soon to know if this is typical or uncharacteristic of performance in back-tests.
