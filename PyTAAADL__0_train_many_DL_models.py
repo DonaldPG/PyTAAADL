@@ -639,8 +639,39 @@ for itrial in range(25):
     ###############################################################################################
     do_update = False
     if do_update == True:
-        UpdateHDF5(symbols_directory, symbols_file)  ### assume hdf is already up to date
+        UpdateHDF_yf(symbols_directory, symbols_file)  ### assume hdf is already up to date
     adjClose_predict, symbols_predict, datearray_predict, _, _ = loadQuotes_fromHDF(filename_predict)
+
+    ###################
+    print("\n\n\n ... adjClose_predict.shape = ", adjClose_predict.shape)
+    print(" ... number of NaN values in adjClose_predict = ", adjClose_predict[np.isnan(adjClose_predict)].size, "\n\n\n")
+    from time import sleep  # TODO: remove this pause after code QC'd
+    sleep(15)
+
+    from functions.TAfunctions import cleanspikes
+    from functions.TAfunctions import interpolate
+    from functions.TAfunctions import cleantobeginning
+
+    # clean up quotes for missing values and varying starting date
+    # Clean up input quotes
+    #  - infill interior NaN values using nearest good values to linearly interpolate
+    #  - copy first valid quote to from valid date to all earlier positions
+    for ii in range(adjClose_predict.shape[0]):
+        if ii%25 == 0:
+            print("  ... progress:  ii, symbol = ", ii, symbols_predict[ii])
+        adjClose_predict[ii,:] = cleanspikes(adjClose_predict[ii,:])
+        adjClose_predict[ii,:] = cleantobeginning(adjClose_predict[ii,:])
+        adjClose_predict[ii,:] = interpolate(adjClose_predict[ii,:])
+        adjClose_predict[ii,:] = cleantobeginning(adjClose_predict[ii,:])
+        adjClose_predict[ii,:] = cleantoend(adjClose_predict[ii,:])
+
+    print("\n\n\n ... number of NaN values in adjClose_predict = ", adjClose_predict[np.isnan(adjClose_predict)].size, "\n\n\n")
+    # TODO: remove this pause after code QC'd
+    sleep(15)
+    ###################
+
+
+
 
     Xpredict, Ypredict, dates_predict, companies_predict = generateExamples3layerGen(datearray_predict,
                                        adjClose_predict,
@@ -756,10 +787,10 @@ for itrial in range(25):
                     BH_gain = sorted_Ytrain.mean()
                     plt.plot(sorted_Ytrain[:-num_stocks], sorted_forecast[:-num_stocks], 'k.', markersize=3)
                     plt.plot(sorted_Ytrain[-num_stocks:], sorted_forecast[-num_stocks:], 'r.', markersize=3)
-                    _plt5_xmin.append(sorted_Ytrain.min())
-                    _plt5_xmax.append(sorted_Ytrain.max())
-                    _plt5_ymin.append(sorted_forecast.min())
-                    _plt5_ymax.append(sorted_forecast.max())
+                    _plt5_xmin.append(sorted_Ytrain[~np.isnan(sorted_Ytrain)].min())
+                    _plt5_xmax.append(sorted_Ytrain[~np.isnan(sorted_Ytrain)].max())
+                    _plt5_ymin.append(sorted_forecast[~np.isnan(sorted_forecast)].min())
+                    _plt5_ymax.append(sorted_forecast[~np.isnan(sorted_forecast)].max())
                 except:
                     BH_gain = 1.0
 
@@ -887,10 +918,14 @@ for itrial in range(25):
         # crossplot predictions against actual preformance
         plt.figure(5, figsize=(14, 10))
         plt.title('Crossplot of actual and forecast Gain/Loss one month forward')
-        _plt5_xmin = np.percentile(_plt5_xmin, 20)
-        _plt5_xmax = np.percentile(_plt5_xmax, 80)
-        _plt5_ymin = np.percentile(_plt5_ymin, 5)
-        _plt5_ymax = np.percentile(_plt5_ymax, 95)
+        _plt5_xmin = np.array(_plt5_xmin)
+        _plt5_xmax = np.array(_plt5_xmax)
+        _plt5_ymin = np.array(_plt5_ymin)
+        _plt5_ymax = np.array(_plt5_ymax)
+        _plt5_xmin = np.percentile(_plt5_xmin[~np.isnan(_plt5_xmin)], 20)
+        _plt5_xmax = np.percentile(_plt5_xmax[~np.isnan(_plt5_xmax)], 80)
+        _plt5_ymin = np.percentile(_plt5_ymin[~np.isnan(_plt5_ymin)], 5)
+        _plt5_ymax = np.percentile(_plt5_ymax[~np.isnan(_plt5_ymax)], 95)
         plt.xlim((_plt5_xmin, _plt5_xmax))
         plt.ylim((_plt5_ymin, _plt5_ymax))
         plt.xlabel('actual')
@@ -898,7 +933,7 @@ for itrial in range(25):
         plt.savefig("pngs/"+timestamp+"_"+stockList+'_'+str(itrial)+"_crossplot"+'.png', format='png')
 
         forecast_date = datearray[-1]
-        forecast_date = datetime.date(2017, 11, 1)
+        forecast_date = datetime.date(2019, 7, 1)
         _Xtrain_today, _dates_today, _companies_today = \
                          generatePredictionInput3layer(forecast_date,
                                                        datearray_predict,

@@ -2267,7 +2267,7 @@ def interpolate(self, method='linear'):
     return result
 '''
 
-def interpolate(self, method='linear', verbose=True):
+def interpolate(self, method='linear', verbose=False):
     """
     Interpolate missing values (after the first valid value)
     Parameters
