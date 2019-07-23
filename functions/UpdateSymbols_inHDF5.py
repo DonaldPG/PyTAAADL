@@ -589,47 +589,58 @@ def get_quotes_yf(symbols_list, start_date=datetime.date(1991,11,1),
             returned_symbols = list(df_temp.columns)
         '''
 
-        data = pdr.get_data_yahoo(missing_symbols, start=s_date, end=e_date)
         try:
-        # for multiple symbols
-            symbolList = list(data['Adj Close'].columns)
+            data = pdr.get_data_yahoo(missing_symbols, start=s_date, end=e_date)
+            try:
+            # for multiple symbols
+                symbolList = list(data['Adj Close'].columns)
+            except:
+                # for single symbol
+                symbolList = symbols
+            if verbose:
+                print('...1')
+                print('... len(symbolList) = ', len(symbolList))
+                print('... type(symbolList) = ', type(symbolList))
+                print('... first and last symbolList = ', [symbolList[0],symbolList[-1]])
+    
+            datearray = data['Adj Close'].index
+            x = data['Adj Close'].values
+            newdates = []
+            for i in range(datearray.shape[0]):
+                newdates.append(str(datearray[i]).split(' ')[0])
+            newdates = np.array(newdates)
+            if x.ndim==1:
+                x = x.reshape(x.size, 1)
+            df_temp = pd.DataFrame(x, index=newdates, columns=symbolList)
+            if returned_symbols != []:
+                returned_symbols = list(df_temp.columns) + returned_symbols
+            else:
+                returned_symbols = list(df_temp.columns)
+            if verbose:
+                print('...2')
+                print('... len(returned_symbols) = ', len(returned_symbols))
+                print('... type(returned_symbols) = ', type(returned_symbols))
+                print('... first and last returned_symbols = ', [returned_symbols[0],returned_symbols[-1]])
+    
+            df_list.append(df_temp)
+            del data
+            del df_temp
+            if verbose:
+                print(" ... len(df_list) = "+str(len(df_list)))
+            missing_symbols = [x for x in symbols_list if x not in returned_symbols][:num_per_pass]
+            remaining_symbols = [x for x in symbols if x not in returned_symbols]
+            print(" ... remaining_symbols = ", remaining_symbols)
+            symbols = missing_symbols
+            if len(missing_symbols) == 0:
+                break
         except:
-            # for single symbol
-            symbolList = symbols
-        if verbose:
-            print('...1')
-            print('... len(symbolList) = ', len(symbolList))
-            print('... type(symbolList) = ', type(symbolList))
-            print('... first and last symbolList = ', [symbolList[0],symbolList[-1]])
-
-        datearray = data['Adj Close'].index
-        x = data['Adj Close'].values
-        newdates = []
-        for i in range(datearray.shape[0]):
-            newdates.append(str(datearray[i]).split(' ')[0])
-        newdates = np.array(newdates)
-        if x.ndim==1:
-            x = x.reshape(x.size, 1)
-        df_temp = pd.DataFrame(x, index=newdates, columns=symbolList)
-        if returned_symbols != []:
-            returned_symbols = list(df_temp.columns) + returned_symbols
-        else:
-            returned_symbols = list(df_temp.columns)
-        if verbose:
-            print('...2')
-            print('... len(returned_symbols) = ', len(returned_symbols))
-            print('... type(returned_symbols) = ', type(returned_symbols))
-            print('... first and last returned_symbols = ', [returned_symbols[0],returned_symbols[-1]])
-
-        df_list.append(df_temp)
-        del data
-        del df_temp
-        if verbose:
-            print(" ... len(df_list) = "+str(len(df_list)))
-        missing_symbols = [x for x in symbols_list if x not in returned_symbols][:num_per_pass]
-        symbols = missing_symbols
-        if len(missing_symbols) == 0:
+            # unable to get quotes for every symbol.
+            # create file with "excluded" in filename with list of remaining_symbols
+            # remove excluded symbols from files for symbols and company_names
+            excluded_symbols = [x for x in symbols if x not in returned_symbols]
+            print(" ... excluded_symbols = ", excluded_symbols)
             break
+            
         """
         try:
             #df_temp = pdr.get_data_yahoo(missing_symbols, start=datetime.date(1991,11,1), end=end_date)
@@ -847,6 +858,7 @@ def UpdateHDF_yf( symbol_directory, symbols_file ):
                                                end_date=newquoteslastdate)
 
     print(" ...inside UpdateSymbols_inHDF5... newadjClose.shape =  ",newadjClose.shape)
+    print(" ...inside UpdateSymbols_inHDF5... len(symbols) =  ", len(symbols))
     print(" ...inside UpdateSymbols_inHDF5...    quote.shape =  ",quote.shape)
 
     newdates = []
@@ -876,11 +888,13 @@ def UpdateHDF_yf( symbol_directory, symbols_file ):
         if ii%5 == 0:
             print "  ... progress:  ii, symbol = ", ii, isymbolupdate
         '''
-        print("  ... progress:  ii, symbol = ", ii, isymbolupdate)
+        #print("  ... progress:  ii, symbol = ", ii, isymbolupdate)
         xupdate = updatedquotes[isymbolupdate].values
+        print("  ... progress:  ii, symbol, # nans = ", ii, isymbolupdate, xupdate[~np.isnan(xupdate)].shape)
         xupdate = cleanspikes(xupdate)
         xupdate = cleantobeginning(xupdate)
-        xupdate = interpolate(xupdate)
+        xupdate = cleantoend(xupdate)
+        xupdate = interpolate(xupdate, verbose=True)
         xupdate = cleantobeginning(xupdate)
         updatedquotes[isymbolupdate] = xupdate
     ###################

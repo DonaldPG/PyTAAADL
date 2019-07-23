@@ -19,7 +19,7 @@ import time
 from functions.GetParams import GetParams, GetHoldings
 from functions.UpdateSymbols_inHDF5 import UpdateHDF_yf
 from functions.UpdateSymbols_inHDF5 import loadQuotes_fromHDF
-from functions.readSymbols import get_Naz100List, get_SP500List
+from functions.readSymbols import get_Naz100List, get_SP500List, get_RU1000List
 
 import sys
 #print(sys.path)

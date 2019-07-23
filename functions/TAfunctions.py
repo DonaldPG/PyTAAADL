@@ -2385,7 +2385,7 @@ def interpolate(self, method='linear', verbose=False):
         invalid = invalid[inds >= firstIndex]
         invalid = invalid[inds <= lastIndex]
 
-        if verbose:
+        if verbose or len(valid) != len(invalid):
             print(" ... inside interpolate .... len(valid) = ", len(valid))
             print(" ... inside interpolate .... len(invalid) = ", len(invalid))
             print(" ... inside interpolate .... firstIndex,lastIndex = ", firstIndex,lastIndex)

@@ -5,6 +5,9 @@ Created on May 12, 202
 '''
 
 def get_RU1000List( verbose=True ):
+    # set some excluded tickers that are note downloaded by yah**
+    excluded_tickers = ['ACET', 'ACXM', 'BOFI', 'GOV', 'HBHC', 'HYH'] # 'OCLR', 'SONC'
+    
     ###
     ### Query wikipedia.com for updated list of stocks in S&P 1000 index.
     ### (same as Russell 1000?)
@@ -68,13 +71,19 @@ def get_RU1000List( verbose=True ):
             subIndustry.append(_subIndustry)
             '''
             cols = [ele.text.strip() for ele in col]
-            symbolList.append(cols[0])
-            companyNamesList.append(cols[1])
+            symbolList.append(cols[1])
+            companyNamesList.append(cols[0])
             industry.append(cols[2])
             subIndustry.append(cols[3])
         except:
             pass
     print("... retrieved RU1000 companies lists from internet")
+    
+    # remove excluded_tickers
+    subIndustry = [subIndustry[i] for i in range(len(symbolList)) if symbolList[i] not in excluded_tickers]
+    industry = [industry[i] for i in range(len(symbolList)) if symbolList[i] not in excluded_tickers]
+    companyNamesList = [companyNamesList[i] for i in range(len(symbolList)) if symbolList[i] not in excluded_tickers]
+    symbolList = [symbolList[i] for i in range(len(symbolList)) if symbolList[i] not in excluded_tickers]
 
     companyName_file = os.path.join( symbol_directory, "RU1000_companyNames.txt" )
     with open( companyName_file, "w" ) as f:

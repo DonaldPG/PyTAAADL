@@ -114,7 +114,8 @@ def create_minimal_hdf(dirname, listname='Naz100'):
 # set up to write quotes to disk.
 # - listname should be one of : 'Naz100', 'SP500', 'RU1000'
 dirname = os.path.dirname(os.path.abspath(__file__))
-listname = "Naz100"
-#listname = "SP500"
+#listname = "Naz100"
+listname = "SP500"
+listname = "RU1000"
 
 create_minimal_hdf(dirname, listname=listname)

@@ -229,12 +229,12 @@ print(" symbols_file = ", symbols_file)
 print("symbols_directory, symbols.file = ", symbols_directory, symbols_file)
 ###############################################################################################
 
-do_update = True
+do_update = False
 if do_update == True:
     UpdateHDF_yf(symbols_directory, symbols_file)  ### assume hdf is already up to date
 adjClose, symbols, datearray, _, _ = loadQuotes_fromHDF(filename)
 
-if stockList == 'SP_wo_Naz':
+if stockList == 'SP_wo_Naz' or stockList == 'RU_wo_Naz':
     naz_filename = os.path.join(_data_path, 'symbols', 'Naz100_Symbols.txt')
     _, naz_symbols, _, _, _ = loadQuotes_fromHDF(naz_filename)
     ncount = 0
@@ -260,9 +260,9 @@ firstdate = datearray[0]
 # --------------------------------------------------
 
 for ii in range(adjClose.shape[0]):
-    adjClose[ii, :] = interpolate(adjClose[ii, :])
     adjClose[ii, :] = cleantobeginning(adjClose[ii, :])
     adjClose[ii, :] = cleantoend(adjClose[ii, :])
+    adjClose[ii, :] = interpolate(adjClose[ii, :])
 
 
 print(" security values check: ", adjClose[np.isnan(adjClose)].shape)
@@ -317,7 +317,7 @@ try:
 except:
     pass
 
-for itrial in range(25):
+for itrial in range(50):
 
     start_time = time.time()
 
@@ -589,7 +589,7 @@ for itrial in range(25):
         model = build_model(Xtrain, number_feature_maps,
                             perform_batch_normalization,
                             use_leaky_relu, leaky_relu_alpha,use_separable,
-                            use_dropout, dropout_pct )
+                            use_dropout, dropout_pct, dense_factor )
 
     model.summary()
     print("feature_map_factor = ", feature_map_factor)

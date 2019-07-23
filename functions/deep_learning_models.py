@@ -10,7 +10,7 @@ Created on Sun Jul 21 14:12:38 2019
 # --------------------------------------------------
 def build_model(Xtrain, number_feature_maps, perform_batch_normalization,
                 use_leaky_relu, leaky_relu_alpha, use_separable,
-                use_dropout, dropout_pct):
+                use_dropout, dropout_pct, dense_factor):
 
     #from keras import backend as K
     #from keras.models import Input
@@ -112,7 +112,7 @@ def build_se_model(Xtrain, number_feature_maps, perform_batch_normalization,
     #from keras.callbacks import ModelCheckpoint
     #from keras.callbacks import EarlyStopping, ReduceLROnPlateau
     #from keras.optimizers import RMSprop, Adam, Adagrad, Nadam
-    
+
     from functions.se import squeeze_excite_block
 
     #model = Sequential()
