@@ -31,7 +31,7 @@ from functions.TAfunctions import generateExamples3layerGen, \
                                   cleantobeginning, \
                                   cleantoend
 from functions.GetParams import GetParams
-from functions.UpdateSymbols_inHDF5 import UpdateHDF5, \
+from functions.UpdateSymbols_inHDF5 import UpdateHDF_yf, \
                                            loadQuotes_fromHDF
 os.chdir(_cwd)
 
@@ -213,8 +213,15 @@ def ensemble_prediction(models_list, idate, datearray, adjClose, num_stocks, sor
         increments = params['increments']
 
         symbols_predict = symbols
-        Xpredict, Ypredict, dates_predict, companies_predict = generateExamples3layerForDate(idate,
-                                                                                             datearray,
+        Xpredict, Ypredict,\
+                  dates_predict,\
+                  companies_predict = generateExamples3layerForDate(idate,\
+                                             datearray,\
+                                             adjClose, \
+                                             num_periods_history,\
+                                             increments, \
+                                             output_incr='monthly')
+
         dates_predict = np.array(dates_predict)
         companies_predict = np.array(companies_predict)
 
@@ -372,8 +379,8 @@ print(" symbols_file = ", symbols_file)
 print("symbols_directory, symbols.file = ", symbols_directory, symbols_file)
 ###############################################################################################
 do_update = False
-if do_update is True:
-    UpdateHDF5(symbols_directory, symbols_file)  ### assume hdf is already up to date
+if do_update == True:
+    UpdateHDF_yf(symbols_directory, symbols_file)  ### assume hdf is already up to date
 adjClose, symbols, datearray, _, _ = loadQuotes_fromHDF(filename)
 
 firstdate = datearray[0]
@@ -386,9 +393,9 @@ firstdate = datearray[0]
 # --------------------------------------------------
 
 for ii in range(adjClose.shape[0]):
-    adjClose[ii, :] = interpolate(adjClose[ii, :])
     adjClose[ii, :] = cleantobeginning(adjClose[ii, :])
     adjClose[ii, :] = cleantoend(adjClose[ii, :])
+    adjClose[ii, :] = interpolate(adjClose[ii, :])
 
 print(" security values check: ", adjClose[np.isnan(adjClose)].shape)
 
@@ -428,7 +435,7 @@ for idate in range(adjClose.shape[1]):
 
 datearray_new_months = []
 for i,ii in enumerate(new_month):
-    if ii is True:
+    if ii == True:
         datearray_new_months.append(dates[i])
 
 datearray_new_months = list(set(datearray_new_months))
@@ -449,10 +456,13 @@ models_list = os.listdir(models_folder)
 models_list = [i for i in models_list if '.txt' in i]
 models_list = [i for i in models_list if 'bak' not in i]
 
-if model_filter == 'Naz100':
-    models_list = [i for i in models_list if 'Naz100' in i]
-if model_filter == 'SP':
+if 'Naz' in model_filter:
+    models_list = [i for i in models_list if 'Naz' in i]
+elif 'SP' in model_filter:
     models_list = [i for i in models_list if 'SP' in i]
+elif 'RU' in model_filter:
+    models_list = [i for i in models_list if 'RU' in i]
+
 
 # choices for sort_mode = 'sharpe', 'sortino', 'sharpe_plus_sortino'
 sort_mode = run_params['sort_mode']
@@ -470,12 +480,14 @@ months_for_performance_comparison = run_params['months_for_performance_compariso
 if not os.path.exists(os.path.join(models_folder, run_params['folder_for_best_performers'])):
         os.mkdir(os.path.join(models_folder, run_params['folder_for_best_performers']))
 
-for i_num_months in [months_for_performance_comparison]:
+#for i_num_months in [months_for_performance_comparison]:
+for i_num_months in months_for_performance_comparison:
 
     print("\n\n\n******************************************************************")
     print(" number months for sharpe or sortino = ", i_num_months)
     print("******************************************************************\n")
 
+    plt.figure(1, figsize=(18,12))
     plt.clf()
     all_model_dates = []
     all_model_metrics_sharpe = []
@@ -497,6 +509,8 @@ for i_num_months in [months_for_performance_comparison]:
                                                      symbols,
                                                      inum_stocks)
             plt.plot(models_plotdates, avg_gain,label=str(im))
+            plt.text(models_plotdates[-1]+datetime.timedelta(25), avg_gain[-1], str(im))
+
             cumu_models.append(avg_gain)
 
             system_final_values.append(avg_gain[-1])
@@ -524,7 +538,7 @@ for i_num_months in [months_for_performance_comparison]:
 
     plt.grid(True)
     plt.yscale('log')
-    plt.legend()
+    plt.legend(loc='upper left')
 
 
     sharpe_list = np.array(sharpe_list)
@@ -538,8 +552,11 @@ for i_num_months in [months_for_performance_comparison]:
             sortino_shortlist.append(sortino_list[i])
     sharpe_shortlist = np.array(sharpe_shortlist)
     sortino_shortlist = np.array(sortino_shortlist)
-    sharpe_threshold = np.percentile(sharpe_shortlist, run_params['sharpe_threshold_percentile'])
-    sortino_threshold = np.percentile(sortino_shortlist, run_params['sortino_threshold_percentile'])
+    _final_value_threshold = np.percentile(system_final_values, run_params['sharpe_threshold_percentile'])
+    #sharpe_threshold = np.percentile(sharpe_shortlist, run_params['sharpe_threshold_percentile'])
+    #sortino_threshold = np.percentile(sortino_shortlist, run_params['sortino_threshold_percentile'])
+    sharpe_threshold = np.percentile(sharpe_list, run_params['sharpe_threshold_percentile'])
+    sortino_threshold = np.percentile(sortino_list, run_params['sortino_threshold_percentile'])
 
     useless_models = []
     model_count_sharpe = []
@@ -554,8 +571,15 @@ for i_num_months in [months_for_performance_comparison]:
               format(system_final_values[i],'12,.0f'),
               format(model_count_sharpe[-1],'>4d'),
               format(model_count_sortino[-1],'>4d'))
+        print(" model, sharpe count, sortino count = ",
+          (imodel+" "*25)[:35],
+          format(system_final_values[i],'12,.0f'), format(_final_value_threshold,'12,.0f'),
+          format(sharpe_list[i],'6.2f'), format(sharpe_threshold,'6.2f'),
+          format(sortino_list[i],'6.2f'), format(sortino_threshold,'6.2f'),
+          [system_final_values[i] > _final_value_threshold, (sharpe_list[i] > sharpe_threshold), sortino_list[i] > sortino_threshold] )
         import shutil
-        if system_final_values[i] > run_params['final_system_value_threshold'] and (sharpe_list[i] > sharpe_threshold or sortino_list[i] > sortino_threshold):
+        #if system_final_values[i] > run_params['final_system_value_threshold'] and (sharpe_list[i] > sharpe_threshold or sortino_list[i] > sortino_threshold):
+        if system_final_values[i] > _final_value_threshold and (sharpe_list[i] > sharpe_threshold or sortino_list[i] > sortino_threshold):
             shutil.copy2(imodel, run_params['folder_for_best_performers'])
             shutil.copy2(imodel.replace('txt', 'hdf'), run_params['folder_for_best_performers'])
             shutil.copy2(imodel.replace('txt', 'json'), run_params['folder_for_best_performers'])
