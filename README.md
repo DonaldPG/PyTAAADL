@@ -55,7 +55,7 @@ It's up to the user to decide if they want to do anything with the recommendatio
 
 This is a work in progress whose main purpose is education about deep learning techniques to be used on other projects that are not related to finances or investment.
 
-Back-test performance suggests unrealistic profits. I am still trying to locate inconsistencies that cause this. Simultaneously, I have been forward-testing since Feb 2018 to observe and benchmark performance against standard stock indices.
+I have been forward-testing since Feb 2018 to observe and benchmark performance against standard stock indices.
 
 Backtests have terrific performance. Forward testing since February 2018, where this system is "paper-traded" manually, initially out-performed the Nasdaq 100 by as much as 10 percent. As of July 2019, it is underperforming the Nasdaq by about 10%. The code has been continually modified during this period. Automatic daily backtests also indicate that this period is one of under-performance that have also been observed, for example in 2000, 2008, and 2015. It is too soon to know if this is typical or uncharacteristic of performance in back-tests.
 
